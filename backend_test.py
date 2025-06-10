@@ -251,6 +251,36 @@ class MoviePreferenceAPITester:
         if success and 'item1' in response and 'item2' in response:
             if response['item1']['content_type'] == response['item2']['content_type']:
                 print(f"✅ Verified: Both items are of type '{response['item1']['content_type']}'")
+                
+                # Verify OMDB poster data is present
+                poster_checks = []
+                
+                # Check item1 poster
+                if response['item1'].get('poster'):
+                    poster_checks.append(f"✅ Item 1 ({response['item1']['title']}) has a poster URL")
+                else:
+                    poster_checks.append(f"⚠️ Item 1 ({response['item1']['title']}) is missing a poster URL")
+                
+                # Check item2 poster
+                if response['item2'].get('poster'):
+                    poster_checks.append(f"✅ Item 2 ({response['item2']['title']}) has a poster URL")
+                else:
+                    poster_checks.append(f"⚠️ Item 2 ({response['item2']['title']}) is missing a poster URL")
+                
+                # Check for additional OMDB metadata
+                for idx, item in enumerate([response['item1'], response['item2']], 1):
+                    if item.get('rating'):
+                        poster_checks.append(f"✅ Item {idx} has IMDB rating: {item['rating']}")
+                    if item.get('plot'):
+                        poster_checks.append(f"✅ Item {idx} has plot description")
+                    if item.get('director'):
+                        poster_checks.append(f"✅ Item {idx} has director info: {item['director']}")
+                    if item.get('actors'):
+                        poster_checks.append(f"✅ Item {idx} has actors info")
+                
+                for check in poster_checks:
+                    print(check)
+                
                 return True, response
             else:
                 print(f"❌ Failed: Items have different types: '{response['item1']['content_type']}' and '{response['item2']['content_type']}'")
