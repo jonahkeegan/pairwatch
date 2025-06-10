@@ -660,17 +660,51 @@ function App() {
               className={`bg-white bg-opacity-10 backdrop-blur-lg rounded-xl overflow-hidden cursor-pointer transform transition-all duration-200 hover:scale-105 hover:bg-opacity-20 ${voting ? 'pointer-events-none opacity-75' : ''}`}
               onClick={() => handleVote(currentPair.item1.id, currentPair.item2.id)}
             >
-              {currentPair.item1.poster && (
-                <img 
-                  src={currentPair.item1.poster} 
-                  alt={currentPair.item1.title}
-                  className="w-full h-48 md:h-80 object-cover"
-                />
-              )}
+              <div className="relative group">
+                {currentPair.item1.poster ? (
+                  <>
+                    <img 
+                      src={currentPair.item1.poster} 
+                      alt={currentPair.item1.title}
+                      className="w-full h-48 md:h-80 object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-60"></div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openPosterModal(currentPair.item1);
+                      }}
+                      className="absolute top-2 right-2 bg-black bg-opacity-50 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-opacity-70"
+                      title="View full poster"
+                    >
+                      🔍
+                    </button>
+                    <div className="absolute bottom-0 left-0 right-0 p-3 text-white">
+                      <div className="text-xs bg-blue-600 bg-opacity-80 px-2 py-1 rounded-full inline-block mb-2">
+                        Official OMDB Poster
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="w-full h-48 md:h-80 bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center">
+                    <div className="text-center text-gray-300">
+                      <div className="text-4xl mb-2">🎬</div>
+                      <div className="text-sm">No Poster Available</div>
+                    </div>
+                  </div>
+                )}
+              </div>
               <div className="p-4 md:p-6 text-white">
                 <h3 className="text-lg md:text-2xl font-bold mb-2">{currentPair.item1.title}</h3>
                 <p className="text-blue-200 mb-2">({currentPair.item1.year})</p>
-                <p className="text-sm text-blue-100 mb-2">{currentPair.item1.genre}</p>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm text-blue-100">{currentPair.item1.genre}</p>
+                  {currentPair.item1.rating && currentPair.item1.rating !== "N/A" && (
+                    <div className="bg-yellow-600 text-white px-2 py-1 rounded text-xs">
+                      ⭐ {currentPair.item1.rating}
+                    </div>
+                  )}
+                </div>
                 {currentPair.item1.plot && (
                   <p className="text-xs md:text-sm text-gray-300 line-clamp-3">{currentPair.item1.plot}</p>
                 )}
