@@ -1,16 +1,20 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Query
+from fastapi import FastAPI, APIRouter, HTTPException, Query, Depends, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 from pathlib import Path
-from pydantic import BaseModel, Field
-from typing import List, Optional, Dict, Any
+from pydantic import BaseModel, Field, EmailStr
+from typing import List, Optional, Dict, Any, Union
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 import requests
 import random
+import jwt
+from passlib.context import CryptContext
+import bcrypt
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -19,6 +23,15 @@ load_dotenv(ROOT_DIR / '.env')
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
+
+# JWT Configuration
+JWT_SECRET_KEY = os.environ['JWT_SECRET_KEY']
+JWT_ALGORITHM = os.environ['JWT_ALGORITHM']
+JWT_EXPIRATION_HOURS = int(os.environ['JWT_EXPIRATION_HOURS'])
+
+# Password hashing
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+security = HTTPBearer(auto_error=False)
 
 # Create the main app without a prefix
 app = FastAPI()
@@ -31,6 +44,47 @@ OMDB_API_KEY = os.environ['OMDB_API_KEY']
 OMDB_BASE_URL = "http://www.omdbapi.com/"
 
 # Models
+class User(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    email: EmailStr
+    name: str
+    password_hash: str
+    avatar_url: Optional[str] = None
+    bio: Optional[str] = None
+    total_votes: int = 0
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    last_login: Optional[datetime] = None
+
+class UserCreate(BaseModel):
+    email: EmailStr
+    name: str
+    password: str
+
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+class UserProfile(BaseModel):
+    id: str
+    email: str
+    name: str
+    avatar_url: Optional[str] = None
+    bio: Optional[str] = None
+    total_votes: int
+    created_at: datetime
+    last_login: Optional[datetime] = None
+
+class UserUpdate(BaseModel):
+    name: Optional[str] = None
+    bio: Optional[str] = None
+    avatar_url: Optional[str] = None
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+    expires_in: int
+    user: UserProfile
+
 class ContentItem(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     imdb_id: str
@@ -47,7 +101,8 @@ class ContentItem(BaseModel):
 
 class Vote(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    user_session: str
+    user_id: Optional[str] = None  # For registered users
+    session_id: Optional[str] = None  # For guest users
     winner_id: str
     loser_id: str
     content_type: str  # "movie" or "series"
@@ -69,7 +124,45 @@ class Recommendation(BaseModel):
     poster: Optional[str] = None
     imdb_id: str
 
-# OMDB API Functions
+# Authentication Functions
+def hash_password(password: str) -> str:
+    """Hash a password"""
+    return pwd_context.hash(password)
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify a password"""
+    return pwd_context.verify(plain_password, hashed_password)
+
+def create_access_token(data: dict) -> str:
+    """Create JWT access token"""
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(hours=JWT_EXPIRATION_HOURS)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
+    return encoded_jwt
+
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> Optional[User]:
+    """Get current user from JWT token"""
+    if not credentials:
+        return None
+    
+    try:
+        payload = jwt.decode(credentials.credentials, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            return None
+    except jwt.ExpiredSignatureToken:
+        return None
+    except jwt.JWTError:
+        return None
+    
+    user_data = await db.users.find_one({"id": user_id})
+    if user_data is None:
+        return None
+    
+    return User(**user_data)
+
+# OMDB API Functions (keeping existing ones)
 async def fetch_from_omdb(params: dict) -> dict:
     """Fetch data from OMDB API"""
     params["apikey"] = OMDB_API_KEY
@@ -125,7 +218,161 @@ POPULAR_TV_SHOWS = [
     "The Bear", "Wednesday", "House of the Dragon", "The Last of Us", "Yellowstone"
 ]
 
-# API Routes
+# Authentication Routes
+@api_router.post("/auth/register", response_model=Token)
+async def register_user(user_data: UserCreate):
+    """Register a new user"""
+    # Check if user already exists
+    existing_user = await db.users.find_one({"email": user_data.email})
+    if existing_user:
+        raise HTTPException(
+            status_code=400,
+            detail="Email already registered"
+        )
+    
+    # Create new user
+    user = User(
+        email=user_data.email,
+        name=user_data.name,
+        password_hash=hash_password(user_data.password)
+    )
+    
+    await db.users.insert_one(user.dict())
+    
+    # Create access token
+    access_token = create_access_token({"sub": user.id})
+    
+    # Update last login
+    await db.users.update_one(
+        {"id": user.id},
+        {"$set": {"last_login": datetime.utcnow()}}
+    )
+    
+    return Token(
+        access_token=access_token,
+        token_type="bearer",
+        expires_in=JWT_EXPIRATION_HOURS * 3600,
+        user=UserProfile(
+            id=user.id,
+            email=user.email,
+            name=user.name,
+            avatar_url=user.avatar_url,
+            bio=user.bio,
+            total_votes=user.total_votes,
+            created_at=user.created_at,
+            last_login=datetime.utcnow()
+        )
+    )
+
+@api_router.post("/auth/login", response_model=Token)
+async def login_user(login_data: UserLogin):
+    """Login user"""
+    user_data = await db.users.find_one({"email": login_data.email})
+    if not user_data:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid email or password"
+        )
+    
+    user = User(**user_data)
+    if not verify_password(login_data.password, user.password_hash):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid email or password"
+        )
+    
+    # Create access token
+    access_token = create_access_token({"sub": user.id})
+    
+    # Update last login
+    await db.users.update_one(
+        {"id": user.id},
+        {"$set": {"last_login": datetime.utcnow()}}
+    )
+    
+    return Token(
+        access_token=access_token,
+        token_type="bearer",
+        expires_in=JWT_EXPIRATION_HOURS * 3600,
+        user=UserProfile(
+            id=user.id,
+            email=user.email,
+            name=user.name,
+            avatar_url=user.avatar_url,
+            bio=user.bio,
+            total_votes=user.total_votes,
+            created_at=user.created_at,
+            last_login=datetime.utcnow()
+        )
+    )
+
+@api_router.get("/auth/me", response_model=UserProfile)
+async def get_current_user_profile(current_user: User = Depends(get_current_user)):
+    """Get current user profile"""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    return UserProfile(
+        id=current_user.id,
+        email=current_user.email,
+        name=current_user.name,
+        avatar_url=current_user.avatar_url,
+        bio=current_user.bio,
+        total_votes=current_user.total_votes,
+        created_at=current_user.created_at,
+        last_login=current_user.last_login
+    )
+
+@api_router.put("/auth/profile", response_model=UserProfile)
+async def update_user_profile(
+    profile_data: UserUpdate,
+    current_user: User = Depends(get_current_user)
+):
+    """Update user profile"""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    update_data = {}
+    if profile_data.name is not None:
+        update_data["name"] = profile_data.name
+    if profile_data.bio is not None:
+        update_data["bio"] = profile_data.bio
+    if profile_data.avatar_url is not None:
+        update_data["avatar_url"] = profile_data.avatar_url
+    
+    if update_data:
+        await db.users.update_one(
+            {"id": current_user.id},
+            {"$set": update_data}
+        )
+        
+        # Get updated user
+        updated_user_data = await db.users.find_one({"id": current_user.id})
+        updated_user = User(**updated_user_data)
+        
+        return UserProfile(
+            id=updated_user.id,
+            email=updated_user.email,
+            name=updated_user.name,
+            avatar_url=updated_user.avatar_url,
+            bio=updated_user.bio,
+            total_votes=updated_user.total_votes,
+            created_at=updated_user.created_at,
+            last_login=updated_user.last_login
+        )
+    
+    return UserProfile(
+        id=current_user.id,
+        email=current_user.email,
+        name=current_user.name,
+        avatar_url=current_user.avatar_url,
+        bio=current_user.bio,
+        total_votes=current_user.total_votes,
+        created_at=current_user.created_at,
+        last_login=current_user.last_login
+    )
+
+# Content and Voting Routes (Updated to support both users and sessions)
 @api_router.post("/initialize-content")
 async def initialize_content():
     """Initialize database with popular movies and TV shows"""
@@ -159,7 +406,7 @@ async def initialize_content():
 
 @api_router.post("/session")
 async def create_session() -> UserSession:
-    """Create a new user session"""
+    """Create a new guest session"""
     session = UserSession()
     await db.sessions.insert_one(session.dict())
     return session
@@ -172,13 +419,24 @@ async def get_session(session_id: str) -> UserSession:
         raise HTTPException(status_code=404, detail="Session not found")
     return UserSession(**session_data)
 
-@api_router.get("/voting-pair/{session_id}")
-async def get_voting_pair(session_id: str) -> VotePair:
+@api_router.get("/voting-pair")
+async def get_voting_pair(
+    session_id: Optional[str] = Query(None),
+    current_user: Optional[User] = Depends(get_current_user)
+) -> VotePair:
     """Get a pair of items for voting (same content type only)"""
-    # Verify session exists
-    session = await db.sessions.find_one({"session_id": session_id})
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
+    # Determine user identifier
+    user_identifier = None
+    if current_user:
+        user_identifier = ("user", current_user.id)
+    elif session_id:
+        # Verify session exists
+        session = await db.sessions.find_one({"session_id": session_id})
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found")
+        user_identifier = ("session", session_id)
+    else:
+        raise HTTPException(status_code=400, detail="Either login or provide session_id")
     
     # Randomly choose content type (movie or series)
     content_type = random.choice(["movie", "series"])
@@ -190,7 +448,11 @@ async def get_voting_pair(session_id: str) -> VotePair:
         raise HTTPException(status_code=400, detail=f"Not enough {content_type} content available")
     
     # Get user's vote history to avoid showing same pairs
-    user_votes = await db.votes.find({"user_session": session_id}).to_list(length=None)
+    if user_identifier[0] == "user":
+        user_votes = await db.votes.find({"user_id": user_identifier[1]}).to_list(length=None)
+    else:
+        user_votes = await db.votes.find({"session_id": user_identifier[1]}).to_list(length=None)
+    
     voted_pairs = set()
     for vote in user_votes:
         pair = frozenset([vote["winner_id"], vote["loser_id"]])
@@ -217,50 +479,95 @@ async def get_voting_pair(session_id: str) -> VotePair:
     )
 
 @api_router.post("/vote")
-async def submit_vote(vote_data: dict):
-    """Submit a vote and update session"""
-    required_fields = ["session_id", "winner_id", "loser_id", "content_type"]
+async def submit_vote(
+    vote_data: dict,
+    current_user: Optional[User] = Depends(get_current_user)
+):
+    """Submit a vote and update user/session"""
+    required_fields = ["winner_id", "loser_id", "content_type"]
     for field in required_fields:
         if field not in vote_data:
             raise HTTPException(status_code=400, detail=f"Missing field: {field}")
     
-    # Create vote record
-    vote = Vote(
-        user_session=vote_data["session_id"],
-        winner_id=vote_data["winner_id"],
-        loser_id=vote_data["loser_id"],
-        content_type=vote_data["content_type"]
-    )
-    
-    await db.votes.insert_one(vote.dict())
-    
-    # Update session vote count
-    await db.sessions.update_one(
-        {"session_id": vote_data["session_id"]},
-        {"$inc": {"vote_count": 1}}
-    )
-    
-    # Get updated session
-    session = await db.sessions.find_one({"session_id": vote_data["session_id"]})
-    
-    return {
-        "vote_recorded": True,
-        "total_votes": session["vote_count"],
-        "recommendations_available": session["vote_count"] >= 36
-    }
+    # Determine user/session
+    if current_user:
+        # Logged in user
+        vote = Vote(
+            user_id=current_user.id,
+            winner_id=vote_data["winner_id"],
+            loser_id=vote_data["loser_id"],
+            content_type=vote_data["content_type"]
+        )
+        
+        await db.votes.insert_one(vote.dict())
+        
+        # Update user's total vote count
+        await db.users.update_one(
+            {"id": current_user.id},
+            {"$inc": {"total_votes": 1}}
+        )
+        
+        # Get updated user stats
+        user_votes = await db.votes.find({"user_id": current_user.id}).to_list(length=None)
+        total_votes = len(user_votes)
+        
+        return {
+            "vote_recorded": True,
+            "total_votes": total_votes,
+            "recommendations_available": total_votes >= 36,
+            "user_authenticated": True
+        }
+    else:
+        # Guest session
+        if "session_id" not in vote_data:
+            raise HTTPException(status_code=400, detail="Missing session_id for guest user")
+        
+        vote = Vote(
+            session_id=vote_data["session_id"],
+            winner_id=vote_data["winner_id"],
+            loser_id=vote_data["loser_id"],
+            content_type=vote_data["content_type"]
+        )
+        
+        await db.votes.insert_one(vote.dict())
+        
+        # Update session vote count
+        await db.sessions.update_one(
+            {"session_id": vote_data["session_id"]},
+            {"$inc": {"vote_count": 1}}
+        )
+        
+        # Get updated session
+        session = await db.sessions.find_one({"session_id": vote_data["session_id"]})
+        
+        return {
+            "vote_recorded": True,
+            "total_votes": session["vote_count"],
+            "recommendations_available": session["vote_count"] >= 36,
+            "user_authenticated": False
+        }
 
-@api_router.get("/recommendations/{session_id}")
-async def get_recommendations(session_id: str) -> List[Recommendation]:
+@api_router.get("/recommendations")
+async def get_recommendations(
+    session_id: Optional[str] = Query(None),
+    current_user: Optional[User] = Depends(get_current_user)
+) -> List[Recommendation]:
     """Get recommendations based on voting history"""
-    session = await db.sessions.find_one({"session_id": session_id})
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
+    # Get user votes
+    if current_user:
+        user_votes = await db.votes.find({"user_id": current_user.id}).to_list(length=None)
+        total_votes = len(user_votes)
+    elif session_id:
+        session = await db.sessions.find_one({"session_id": session_id})
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found")
+        user_votes = await db.votes.find({"session_id": session_id}).to_list(length=None)
+        total_votes = len(user_votes)
+    else:
+        raise HTTPException(status_code=400, detail="Either login or provide session_id")
     
-    if session["vote_count"] < 36:
+    if total_votes < 36:
         raise HTTPException(status_code=400, detail="Need at least 36 votes for recommendations")
-    
-    # Get user's votes
-    user_votes = await db.votes.find({"user_session": session_id}).to_list(length=None)
     
     # Count wins for each item
     win_counts = {}
@@ -291,26 +598,68 @@ async def get_recommendations(session_id: str) -> List[Recommendation]:
     
     return recommendations
 
-@api_router.get("/stats/{session_id}")
-async def get_user_stats(session_id: str):
+@api_router.get("/stats")
+async def get_user_stats(
+    session_id: Optional[str] = Query(None),
+    current_user: Optional[User] = Depends(get_current_user)
+):
     """Get user voting statistics"""
-    session = await db.sessions.find_one({"session_id": session_id})
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
-    
-    user_votes = await db.votes.find({"user_session": session_id}).to_list(length=None)
+    if current_user:
+        user_votes = await db.votes.find({"user_id": current_user.id}).to_list(length=None)
+        total_votes = len(user_votes)
+    elif session_id:
+        session = await db.sessions.find_one({"session_id": session_id})
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found")
+        user_votes = await db.votes.find({"session_id": session_id}).to_list(length=None)
+        total_votes = len(user_votes)
+    else:
+        raise HTTPException(status_code=400, detail="Either login or provide session_id")
     
     # Count by content type
     movie_votes = len([v for v in user_votes if v["content_type"] == "movie"])
     series_votes = len([v for v in user_votes if v["content_type"] == "series"])
     
     return {
-        "total_votes": len(user_votes),
+        "total_votes": total_votes,
         "movie_votes": movie_votes,
         "series_votes": series_votes,
-        "votes_until_recommendations": max(0, 36 - len(user_votes)),
-        "recommendations_available": len(user_votes) >= 36
+        "votes_until_recommendations": max(0, 36 - total_votes),
+        "recommendations_available": total_votes >= 36,
+        "user_authenticated": current_user is not None
     }
+
+@api_router.get("/profile/voting-history")
+async def get_voting_history(current_user: User = Depends(get_current_user)):
+    """Get user's detailed voting history"""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    user_votes = await db.votes.find({"user_id": current_user.id}).sort("created_at", -1).to_list(length=100)
+    
+    history = []
+    for vote in user_votes:
+        winner = await db.content.find_one({"id": vote["winner_id"]})
+        loser = await db.content.find_one({"id": vote["loser_id"]})
+        
+        if winner and loser:
+            history.append({
+                "id": vote["id"],
+                "winner": {
+                    "title": winner["title"],
+                    "poster": winner.get("poster"),
+                    "year": winner["year"]
+                },
+                "loser": {
+                    "title": loser["title"],
+                    "poster": loser.get("poster"),
+                    "year": loser["year"]
+                },
+                "content_type": vote["content_type"],
+                "voted_at": vote["created_at"]
+            })
+    
+    return history
 
 # Include the router in the main app
 app.include_router(api_router)

@@ -6,6 +6,13 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 function App() {
+  // Authentication state
+  const [user, setUser] = useState(null);
+  const [token, setToken] = useState(localStorage.getItem('token'));
+  const [showAuth, setShowAuth] = useState(false);
+  const [authMode, setAuthMode] = useState('login'); // 'login' or 'register'
+  
+  // App state
   const [sessionId, setSessionId] = useState(null);
   const [currentPair, setCurrentPair] = useState(null);
   const [userStats, setUserStats] = useState(null);
@@ -13,12 +20,53 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [voting, setVoting] = useState(false);
   const [showRecommendations, setShowRecommendations] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+  const [votingHistory, setVotingHistory] = useState([]);
   const [contentInitialized, setContentInitialized] = useState(false);
 
-  // Initialize session and content
+  // Auth form state
+  const [authForm, setAuthForm] = useState({
+    email: '',
+    password: '',
+    name: ''
+  });
+
+  // Profile form state
+  const [profileForm, setProfileForm] = useState({
+    name: '',
+    bio: '',
+    avatar_url: ''
+  });
+
+  // Configure axios with auth token
+  useEffect(() => {
+    if (token) {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      getCurrentUser();
+    } else {
+      delete axios.defaults.headers.common['Authorization'];
+    }
+  }, [token]);
+
+  // Initialize app
   useEffect(() => {
     initializeApp();
   }, []);
+
+  const getCurrentUser = async () => {
+    try {
+      const response = await axios.get(`${API}/auth/me`);
+      setUser(response.data);
+      setProfileForm({
+        name: response.data.name,
+        bio: response.data.bio || '',
+        avatar_url: response.data.avatar_url || ''
+      });
+    } catch (error) {
+      console.error('Failed to get current user:', error);
+      logout();
+    }
+  };
 
   const initializeApp = async () => {
     try {
@@ -31,15 +79,15 @@ function App() {
         setContentInitialized(true);
       }
       
-      // Create session
-      const sessionResponse = await axios.post(`${API}/session`);
-      setSessionId(sessionResponse.data.session_id);
+      // If not logged in, create a guest session
+      if (!token) {
+        const sessionResponse = await axios.post(`${API}/session`);
+        setSessionId(sessionResponse.data.session_id);
+      }
       
-      // Get initial stats
-      await updateStats(sessionResponse.data.session_id);
-      
-      // Get first voting pair
-      await getNextPair(sessionResponse.data.session_id);
+      // Get initial stats and voting pair
+      await updateStats();
+      await getNextPair();
       
     } catch (error) {
       console.error('Initialization error:', error);
@@ -48,14 +96,19 @@ function App() {
     }
   };
 
-  const updateStats = async (session) => {
+  const updateStats = async () => {
     try {
-      const statsResponse = await axios.get(`${API}/stats/${session}`);
+      const params = {};
+      if (!user && sessionId) {
+        params.session_id = sessionId;
+      }
+      
+      const statsResponse = await axios.get(`${API}/stats`, { params });
       setUserStats(statsResponse.data);
       
       // Check if recommendations are available
       if (statsResponse.data.recommendations_available && !showRecommendations) {
-        const recResponse = await axios.get(`${API}/recommendations/${session}`);
+        const recResponse = await axios.get(`${API}/recommendations`, { params });
         setRecommendations(recResponse.data);
       }
     } catch (error) {
@@ -63,9 +116,14 @@ function App() {
     }
   };
 
-  const getNextPair = async (session) => {
+  const getNextPair = async () => {
     try {
-      const pairResponse = await axios.get(`${API}/voting-pair/${session}`);
+      const params = {};
+      if (!user && sessionId) {
+        params.session_id = sessionId;
+      }
+      
+      const pairResponse = await axios.get(`${API}/voting-pair`, { params });
       setCurrentPair(pairResponse.data);
     } catch (error) {
       console.error('Pair error:', error);
@@ -78,18 +136,21 @@ function App() {
     try {
       setVoting(true);
       
-      await axios.post(`${API}/vote`, {
-        session_id: sessionId,
+      const voteData = {
         winner_id: winnerId,
         loser_id: loserId,
         content_type: currentPair.content_type
-      });
+      };
       
-      // Update stats
-      await updateStats(sessionId);
+      if (!user && sessionId) {
+        voteData.session_id = sessionId;
+      }
       
-      // Get next pair
-      await getNextPair(sessionId);
+      await axios.post(`${API}/vote`, voteData);
+      
+      // Update stats and get next pair
+      await updateStats();
+      await getNextPair();
       
     } catch (error) {
       console.error('Vote error:', error);
@@ -98,8 +159,75 @@ function App() {
     }
   };
 
+  const handleAuth = async (e) => {
+    e.preventDefault();
+    
+    try {
+      const endpoint = authMode === 'login' ? 'login' : 'register';
+      const response = await axios.post(`${API}/auth/${endpoint}`, authForm);
+      
+      const { access_token, user: userData } = response.data;
+      
+      // Store token and set user
+      localStorage.setItem('token', access_token);
+      setToken(access_token);
+      setUser(userData);
+      setShowAuth(false);
+      
+      // Reset form
+      setAuthForm({ email: '', password: '', name: '' });
+      
+      // Refresh app state
+      await updateStats();
+      await getNextPair();
+      
+    } catch (error) {
+      console.error('Auth error:', error);
+      alert(error.response?.data?.detail || 'Authentication failed');
+    }
+  };
+
+  const logout = () => {
+    localStorage.removeItem('token');
+    setToken(null);
+    setUser(null);
+    axios.defaults.headers.common['Authorization'] = '';
+    
+    // Reinitialize as guest
+    initializeApp();
+  };
+
+  const updateProfile = async (e) => {
+    e.preventDefault();
+    
+    try {
+      const response = await axios.put(`${API}/auth/profile`, profileForm);
+      setUser(response.data);
+      alert('Profile updated successfully!');
+    } catch (error) {
+      console.error('Profile update error:', error);
+      alert('Failed to update profile');
+    }
+  };
+
+  const getVotingHistory = async () => {
+    try {
+      const response = await axios.get(`${API}/profile/voting-history`);
+      setVotingHistory(response.data);
+    } catch (error) {
+      console.error('Voting history error:', error);
+    }
+  };
+
   const toggleRecommendations = () => {
     setShowRecommendations(!showRecommendations);
+  };
+
+  const toggleProfile = async () => {
+    if (!showProfile && user) {
+      await getVotingHistory();
+    }
+    setShowProfile(!showProfile);
   };
 
   if (loading) {
@@ -113,6 +241,180 @@ function App() {
     );
   }
 
+  // Authentication Modal
+  if (showAuth) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center p-4">
+        <div className="bg-white bg-opacity-10 backdrop-blur-lg rounded-xl p-8 w-full max-w-md">
+          <h2 className="text-3xl font-bold text-white mb-6 text-center">
+            {authMode === 'login' ? 'Login' : 'Sign Up'}
+          </h2>
+          
+          <form onSubmit={handleAuth} className="space-y-4">
+            {authMode === 'register' && (
+              <input
+                type="text"
+                placeholder="Your Name"
+                value={authForm.name}
+                onChange={(e) => setAuthForm({...authForm, name: e.target.value})}
+                className="w-full p-3 rounded-lg bg-white bg-opacity-20 text-white placeholder-gray-300 border border-white border-opacity-30 focus:outline-none focus:border-opacity-50"
+                required
+              />
+            )}
+            
+            <input
+              type="email"
+              placeholder="Email"
+              value={authForm.email}
+              onChange={(e) => setAuthForm({...authForm, email: e.target.value})}
+              className="w-full p-3 rounded-lg bg-white bg-opacity-20 text-white placeholder-gray-300 border border-white border-opacity-30 focus:outline-none focus:border-opacity-50"
+              required
+            />
+            
+            <input
+              type="password"
+              placeholder="Password"
+              value={authForm.password}
+              onChange={(e) => setAuthForm({...authForm, password: e.target.value})}
+              className="w-full p-3 rounded-lg bg-white bg-opacity-20 text-white placeholder-gray-300 border border-white border-opacity-30 focus:outline-none focus:border-opacity-50"
+              required
+            />
+            
+            <button
+              type="submit"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors"
+            >
+              {authMode === 'login' ? 'Login' : 'Sign Up'}
+            </button>
+          </form>
+          
+          <div className="mt-6 text-center">
+            <p className="text-white mb-4">
+              {authMode === 'login' ? "Don't have an account?" : "Already have an account?"}
+            </p>
+            <button
+              onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}
+              className="text-blue-300 hover:text-blue-200 underline"
+            >
+              {authMode === 'login' ? 'Sign Up' : 'Login'}
+            </button>
+          </div>
+          
+          <div className="mt-4 text-center">
+            <button
+              onClick={() => setShowAuth(false)}
+              className="text-gray-300 hover:text-white"
+            >
+              Continue as Guest
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Profile Page
+  if (showProfile && user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 p-4">
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-white bg-opacity-10 backdrop-blur-lg rounded-xl p-8">
+            <div className="flex justify-between items-center mb-8">
+              <h1 className="text-4xl font-bold text-white">My Profile</h1>
+              <button
+                onClick={toggleProfile}
+                className="text-blue-300 hover:text-blue-200"
+              >
+                Back to Voting
+              </button>
+            </div>
+            
+            {/* Profile Info */}
+            <div className="grid md:grid-cols-2 gap-8 mb-8">
+              <div>
+                <h2 className="text-2xl font-bold text-white mb-4">Profile Information</h2>
+                <form onSubmit={updateProfile} className="space-y-4">
+                  <input
+                    type="text"
+                    placeholder="Your Name"
+                    value={profileForm.name}
+                    onChange={(e) => setProfileForm({...profileForm, name: e.target.value})}
+                    className="w-full p-3 rounded-lg bg-white bg-opacity-20 text-white placeholder-gray-300 border border-white border-opacity-30 focus:outline-none focus:border-opacity-50"
+                  />
+                  
+                  <textarea
+                    placeholder="Bio (optional)"
+                    value={profileForm.bio}
+                    onChange={(e) => setProfileForm({...profileForm, bio: e.target.value})}
+                    rows={3}
+                    className="w-full p-3 rounded-lg bg-white bg-opacity-20 text-white placeholder-gray-300 border border-white border-opacity-30 focus:outline-none focus:border-opacity-50"
+                  />
+                  
+                  <input
+                    type="url"
+                    placeholder="Avatar URL (optional)"
+                    value={profileForm.avatar_url}
+                    onChange={(e) => setProfileForm({...profileForm, avatar_url: e.target.value})}
+                    className="w-full p-3 rounded-lg bg-white bg-opacity-20 text-white placeholder-gray-300 border border-white border-opacity-30 focus:outline-none focus:border-opacity-50"
+                  />
+                  
+                  <button
+                    type="submit"
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors"
+                  >
+                    Update Profile
+                  </button>
+                </form>
+              </div>
+              
+              <div>
+                <h2 className="text-2xl font-bold text-white mb-4">Statistics</h2>
+                <div className="space-y-4 text-white">
+                  <div className="bg-white bg-opacity-10 rounded-lg p-4">
+                    <div className="text-3xl font-bold">{user.total_votes}</div>
+                    <div className="text-blue-200">Total Votes</div>
+                  </div>
+                  <div className="bg-white bg-opacity-10 rounded-lg p-4">
+                    <div className="text-lg">Member since</div>
+                    <div className="text-blue-200">{new Date(user.created_at).toLocaleDateString()}</div>
+                  </div>
+                  {user.last_login && (
+                    <div className="bg-white bg-opacity-10 rounded-lg p-4">
+                      <div className="text-lg">Last active</div>
+                      <div className="text-blue-200">{new Date(user.last_login).toLocaleDateString()}</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            {/* Voting History */}
+            <div>
+              <h2 className="text-2xl font-bold text-white mb-4">Recent Voting History</h2>
+              <div className="grid gap-4 max-h-96 overflow-y-auto">
+                {votingHistory.slice(0, 20).map((vote) => (
+                  <div key={vote.id} className="bg-white bg-opacity-10 rounded-lg p-4 flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className="text-green-400 font-bold">✓</div>
+                      <div>
+                        <div className="text-white font-bold">{vote.winner.title}</div>
+                        <div className="text-gray-300 text-sm">beat {vote.loser.title}</div>
+                      </div>
+                    </div>
+                    <div className="text-blue-200 text-sm">
+                      {new Date(vote.voted_at).toLocaleDateString()}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Recommendations Page
   if (showRecommendations && recommendations.length > 0) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 p-4">
@@ -154,9 +456,44 @@ function App() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
       {/* Header */}
+      <div className="flex justify-between items-center p-4">
+        <div className="text-white">
+          <h1 className="text-2xl font-bold">Movie Preferences</h1>
+        </div>
+        
+        <div className="flex items-center space-x-4">
+          {user ? (
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={toggleProfile}
+                className="text-white hover:text-blue-200 flex items-center"
+              >
+                {user.avatar_url && (
+                  <img src={user.avatar_url} alt={user.name} className="w-8 h-8 rounded-full mr-2" />
+                )}
+                {user.name}
+              </button>
+              <button
+                onClick={logout}
+                className="text-red-300 hover:text-red-200"
+              >
+                Logout
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowAuth(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors"
+            >
+              Login / Sign Up
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Stats and Voting Interface */}
       <div className="text-center py-6 px-4">
-        <h1 className="text-4xl font-bold text-white mb-2">Movie & TV Preferences</h1>
-        <p className="text-blue-200">Choose your favorites to discover your taste</p>
+        <p className="text-blue-200 mb-4">Choose your favorites to discover your taste</p>
         
         {userStats && (
           <div className="mt-4 flex justify-center space-x-8 text-white">
