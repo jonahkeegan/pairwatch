@@ -554,16 +554,43 @@ function App() {
           
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
             {recommendations.map((rec, index) => (
-              <div key={index} className="bg-white bg-opacity-10 backdrop-blur-lg rounded-xl p-6 text-white">
-                {rec.poster && (
-                  <img 
-                    src={rec.poster} 
-                    alt={rec.title}
-                    className="w-full h-64 object-cover rounded-lg mb-4"
-                  />
-                )}
-                <h3 className="text-xl font-bold mb-2">{rec.title}</h3>
-                <p className="text-blue-200 text-sm">{rec.reason}</p>
+              <div key={index} className="bg-white bg-opacity-10 backdrop-blur-lg rounded-xl overflow-hidden text-white hover:bg-opacity-20 transition-all">
+                <div className="relative group">
+                  {rec.poster ? (
+                    <>
+                      <img 
+                        src={rec.poster} 
+                        alt={rec.title}
+                        className="w-full h-64 object-cover cursor-pointer"
+                        onClick={() => openPosterModal(rec)}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-60"></div>
+                      <button
+                        onClick={() => openPosterModal(rec)}
+                        className="absolute top-2 right-2 bg-black bg-opacity-50 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-opacity-70"
+                        title="View full poster"
+                      >
+                        🔍
+                      </button>
+                      <div className="absolute bottom-0 left-0 right-0 p-3 text-white">
+                        <div className="text-xs bg-green-600 bg-opacity-80 px-2 py-1 rounded-full inline-block mb-2">
+                          Recommended for You
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="w-full h-64 bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center">
+                      <div className="text-center text-gray-300">
+                        <div className="text-4xl mb-2">🎬</div>
+                        <div className="text-sm">No Poster Available</div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="p-6">
+                  <h3 className="text-xl font-bold mb-2">{rec.title}</h3>
+                  <p className="text-blue-200 text-sm">{rec.reason}</p>
+                </div>
               </div>
             ))}
           </div>
