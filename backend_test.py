@@ -60,46 +60,125 @@ class MoviePreferenceAPITester:
             self.test_results.append({"name": name, "status": "ERROR", "details": str(e)})
             return False, {}
 
-    def test_initialize_content(self):
-        """Test content initialization"""
+    # Authentication Tests
+    def test_user_registration(self):
+        """Test user registration"""
+        data = {
+            "email": self.test_user_email,
+            "password": self.test_user_password,
+            "name": self.test_user_name
+        }
+        
         success, response = self.run_test(
-            "Initialize Content",
+            "User Registration",
             "POST",
-            "initialize-content",
+            "auth/register",
             200,
-            data={}
+            data=data
         )
-        return success, response
-
-    def test_create_session(self):
-        """Test session creation"""
-        success, response = self.run_test(
-            "Create Session",
-            "POST",
-            "session",
-            200,
-            data={}
-        )
-        if success and 'session_id' in response:
-            self.session_id = response['session_id']
-            print(f"Session ID: {self.session_id}")
+        
+        if success and 'access_token' in response:
+            self.auth_token = response['access_token']
+            self.user_id = response['user']['id']
+            print(f"✅ User registered with ID: {self.user_id}")
+            print(f"✅ Auth token received: {self.auth_token[:10]}...")
             return True, response
+        
         return False, response
-
-    def test_get_session(self):
-        """Test getting session info"""
-        if not self.session_id:
-            print("❌ No session ID available")
-            self.test_results.append({"name": "Get Session", "status": "SKIP", "details": "No session ID available"})
+    
+    def test_user_login(self):
+        """Test user login"""
+        data = {
+            "email": self.test_user_email,
+            "password": self.test_user_password
+        }
+        
+        success, response = self.run_test(
+            "User Login",
+            "POST",
+            "auth/login",
+            200,
+            data=data
+        )
+        
+        if success and 'access_token' in response:
+            self.auth_token = response['access_token']
+            self.user_id = response['user']['id']
+            print(f"✅ User logged in with ID: {self.user_id}")
+            print(f"✅ Auth token received: {self.auth_token[:10]}...")
+            return True, response
+        
+        return False, response
+    
+    def test_get_current_user(self):
+        """Test getting current user profile"""
+        if not self.auth_token:
+            print("❌ No auth token available")
+            self.test_results.append({"name": "Get Current User", "status": "SKIP", "details": "No auth token available"})
             return False, {}
         
         success, response = self.run_test(
-            "Get Session",
+            "Get Current User",
             "GET",
-            f"session/{self.session_id}",
-            200
+            "auth/me",
+            200,
+            auth=True
         )
-        return success, response
+        
+        if success and 'id' in response:
+            print(f"✅ Retrieved user profile for: {response.get('name')}")
+            return True, response
+        
+        return False, response
+    
+    def test_update_profile(self):
+        """Test updating user profile"""
+        if not self.auth_token:
+            print("❌ No auth token available")
+            self.test_results.append({"name": "Update Profile", "status": "SKIP", "details": "No auth token available"})
+            return False, {}
+        
+        data = {
+            "name": f"{self.test_user_name} Updated",
+            "bio": "This is a test bio for the user profile",
+            "avatar_url": "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y"
+        }
+        
+        success, response = self.run_test(
+            "Update Profile",
+            "PUT",
+            "auth/profile",
+            200,
+            data=data,
+            auth=True
+        )
+        
+        if success and response.get('name') == data['name']:
+            print(f"✅ Profile updated successfully: {response.get('name')}")
+            return True, response
+        
+        return False, response
+    
+    def test_get_voting_history(self):
+        """Test getting user voting history"""
+        if not self.auth_token:
+            print("❌ No auth token available")
+            self.test_results.append({"name": "Get Voting History", "status": "SKIP", "details": "No auth token available"})
+            return False, {}
+        
+        success, response = self.run_test(
+            "Get Voting History",
+            "GET",
+            "profile/voting-history",
+            200,
+            auth=True
+        )
+        
+        if success:
+            print(f"✅ Retrieved voting history with {len(response)} entries")
+            return True, response
+        
+        return False, response
 
     def test_get_voting_pair(self):
         """Test getting a voting pair"""
