@@ -262,6 +262,42 @@ class MoviePreferenceAPITester:
             200,
             data={}
         )
+        
+        if success:
+            # Check if the response contains information about initialized content
+            if 'total_items' in response:
+                print(f"✅ Content initialized with {response['total_items']} items")
+                
+                # Check if we have the expanded content library (should be close to 284 items)
+                if response['total_items'] >= 200:
+                    print(f"✅ Expanded content library confirmed with {response['total_items']} items (expected ~284)")
+                    self.test_results.append({
+                        "name": "Expanded Content Library", 
+                        "status": "PASS", 
+                        "details": f"Found {response['total_items']} items (expected ~284)"
+                    })
+                else:
+                    print(f"⚠️ Content library seems smaller than expected: {response['total_items']} items (expected ~284)")
+                    self.test_results.append({
+                        "name": "Expanded Content Library", 
+                        "status": "WARNING", 
+                        "details": f"Found only {response['total_items']} items (expected ~284)"
+                    })
+            else:
+                print("⚠️ Response doesn't contain total_items count")
+                
+            # Check for movies and series counts if available
+            if 'movies' in response:
+                print(f"✅ Initialized {response['movies']} movies")
+            if 'series' in response:
+                print(f"✅ Initialized {response['series']} TV shows")
+                
+            # Check for any initialization errors
+            if 'errors' in response and response['errors']:
+                print(f"⚠️ Found {len(response['errors'])} initialization errors")
+                for error in response['errors'][:5]:  # Show first 5 errors
+                    print(f"  - {error}")
+        
         return success, response
 
     def test_create_session(self):
