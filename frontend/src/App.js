@@ -65,6 +65,11 @@ function App() {
     }
   }, [sessionId, user]);
 
+  // Initialize app
+  useEffect(() => {
+    initializeApp();
+  }, []);
+
   const getCurrentUser = async () => {
     try {
       const response = await axios.get(`${API}/auth/me`);
