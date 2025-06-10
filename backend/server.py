@@ -201,21 +201,110 @@ async def search_and_store_content(title: str, content_type: str) -> Optional[Co
     await db.content.insert_one(content_item.dict())
     return content_item
 
-# Initialize popular content
+# Initialize popular content - Expanded for richer experience
 POPULAR_MOVIES = [
+    # Classic Films
     "The Shawshank Redemption", "The Godfather", "The Dark Knight", "Pulp Fiction",
     "Forrest Gump", "Inception", "The Matrix", "Goodfellas", "The Silence of the Lambs",
     "Se7en", "Saving Private Ryan", "Interstellar", "The Departed", "The Prestige",
-    "Fight Club", "The Lion King", "Gladiator", "Titanic", "Avatar", "Avengers: Endgame",
-    "Spider-Man: No Way Home", "Top Gun: Maverick", "Jurassic Park", "Star Wars", "Casablanca"
+    "Fight Club", "The Lion King", "Gladiator", "Titanic", "Avatar", "Casablanca",
+    
+    # Modern Blockbusters
+    "Avengers: Endgame", "Spider-Man: No Way Home", "Top Gun: Maverick", "Jurassic Park",
+    "Star Wars", "The Lord of the Rings: The Fellowship of the Ring", "The Empire Strikes Back",
+    "Raiders of the Lost Ark", "Jaws", "E.T. the Extra-Terrestrial", "Back to the Future",
+    "Terminator 2: Judgment Day", "Aliens", "Die Hard", "Heat", "Goodfellas",
+    
+    # Award Winners
+    "Parasite", "Green Book", "Moonlight", "Birdman", "12 Years a Slave", "Argo",
+    "The Artist", "The King's Speech", "Slumdog Millionaire", "No Country for Old Men",
+    "The Departed", "Crash", "Million Dollar Baby", "Chicago", "A Beautiful Mind",
+    
+    # Action & Adventure
+    "Mad Max: Fury Road", "John Wick", "Mission: Impossible - Fallout", "Casino Royale",
+    "Iron Man", "Wonder Woman", "Black Panther", "Guardians of the Galaxy", "Thor: Ragnarok",
+    "Captain America: The Winter Soldier", "Doctor Strange", "Ant-Man", "Deadpool",
+    
+    # Sci-Fi & Fantasy
+    "Blade Runner 2049", "Arrival", "Ex Machina", "Her", "Gravity", "The Martian",
+    "Dune", "Pacific Rim", "Edge of Tomorrow", "Minority Report", "The Fifth Element",
+    "Star Trek", "Star Trek Into Darkness", "District 9", "Elysium", "Oblivion",
+    
+    # Horror & Thriller
+    "Get Out", "A Quiet Place", "Hereditary", "The Conjuring", "It", "Halloween",
+    "Scream", "The Sixth Sense", "The Others", "Shutter Island", "Gone Girl",
+    "Zodiac", "Prisoners", "Sicario", "Hell or High Water", "Wind River",
+    
+    # Comedy
+    "The Grand Budapest Hotel", "Superbad", "Anchorman", "Step Brothers", "Tropic Thunder",
+    "Zoolander", "Meet the Parents", "Wedding Crashers", "The Hangover", "Bridesmaids",
+    "Knives Out", "Game Night", "Tag", "Blockers", "Booksmart",
+    
+    # Drama
+    "Manchester by the Sea", "Room", "Spotlight", "The Revenant", "Birdman", "Whiplash",
+    "La La Land", "Call Me by Your Name", "Lady Bird", "Three Billboards Outside Ebbing, Missouri",
+    "The Shape of Water", "First Man", "Vice", "Green Book", "Bohemian Rhapsody",
+    
+    # Animation
+    "Toy Story", "Finding Nemo", "The Incredibles", "Up", "WALL-E", "Inside Out",
+    "Coco", "Moana", "Frozen", "Zootopia", "Big Hero 6", "Wreck-It Ralph",
+    "How to Train Your Dragon", "Shrek", "Monsters, Inc.", "Ratatouille",
+    
+    # International Cinema
+    "Spirited Away", "Princess Mononoke", "Your Name", "Oldboy", "The Handmaiden",
+    "Train to Busan", "Burning", "Roma", "Amour", "The Hunt", "Another Round",
+    "Minari", "The Farewell", "Crazy Rich Asians", "Everything Everywhere All at Once"
 ]
 
 POPULAR_TV_SHOWS = [
-    "Breaking Bad", "Game of Thrones", "The Sopranos", "The Wire", "Friends",
-    "The Office", "Stranger Things", "The Crown", "Sherlock", "True Detective",
-    "House of Cards", "Narcos", "Black Mirror", "Westworld", "The Mandalorian",
-    "Better Call Saul", "Ozark", "The Queen's Gambit", "Succession", "Euphoria",
-    "The Bear", "Wednesday", "House of the Dragon", "The Last of Us", "Yellowstone"
+    # Drama Series
+    "Breaking Bad", "Better Call Saul", "The Sopranos", "The Wire", "Mad Men",
+    "True Detective", "Westworld", "House of Cards", "Succession", "Ozark",
+    "Narcos", "Mindhunter", "Fargo", "The Crown", "Downton Abbey",
+    
+    # Fantasy & Sci-Fi
+    "Game of Thrones", "House of the Dragon", "The Mandalorian", "Stranger Things",
+    "Black Mirror", "The Boys", "The Umbrella Academy", "Loki", "WandaVision",
+    "The Falcon and the Winter Soldier", "Star Trek: Discovery", "The Expanse",
+    "Altered Carbon", "Lost", "Fringe", "The X-Files",
+    
+    # Comedy
+    "The Office", "Friends", "Parks and Recreation", "Brooklyn Nine-Nine", "Arrested Development",
+    "Community", "30 Rock", "Scrubs", "How I Met Your Mother", "The Big Bang Theory",
+    "Modern Family", "Schitt's Creek", "Ted Lasso", "The Good Place", "Veep",
+    
+    # Thriller & Crime
+    "Sherlock", "Dexter", "Prison Break", "24", "Homeland", "The Blacklist",
+    "Money Heist", "Dark", "Bodyguard", "Line of Duty", "Mare of Easttown",
+    "The Night Of", "The Sinner", "Broadchurch", "Top of the Lake", "Happy Valley",
+    
+    # Recent Hits
+    "Wednesday", "The Bear", "Abbott Elementary", "House of the Dragon", "The Last of Us",
+    "Only Murders in the Building", "Euphoria", "Yellowstone", "1883", "Mayor of Kingstown",
+    "Hawkeye", "Ms. Marvel", "She-Hulk", "Moon Knight", "Obi-Wan Kenobi",
+    
+    # Classic TV
+    "The Twilight Zone", "Cheers", "Seinfeld", "Frasier", "The West Wing",
+    "ER", "Law & Order", "CSI", "NCIS", "Criminal Minds", "Bones",
+    "House", "Grey's Anatomy", "Scandal", "How to Get Away with Murder",
+    
+    # Limited Series
+    "The Queen's Gambit", "Chernobyl", "Band of Brothers", "The Pacific", "John Adams",
+    "Angels in America", "The People v. O.J. Simpson", "The Assassination of Gianni Versace",
+    "When They See Us", "Unbelievable", "Sharp Objects", "Big Little Lies",
+    
+    # International Shows
+    "Squid Game", "Money Heist", "Dark", "Lupin", "Elite", "Cable Girls",
+    "The Rain", "Ragnarok", "Young Royals", "Sex Education", "The Crown",
+    "Peaky Blinders", "Sherlock", "Doctor Who", "Downton Abbey", "Call the Midwife",
+    
+    # Animated Series
+    "Rick and Morty", "BoJack Horseman", "South Park", "The Simpsons", "Family Guy",
+    "Bob's Burgers", "Archer", "Big Mouth", "F is for Family", "Disenchantment",
+    
+    # Documentary Series
+    "Making a Murderer", "Tiger King", "Wild Wild Country", "The Staircase", "Serial",
+    "True Crime", "The Jinx", "Going Clear", "Won't You Be My Neighbor", "Free Solo"
 ]
 
 # Authentication Routes
