@@ -165,6 +165,7 @@ function App() {
     e.preventDefault();
     
     try {
+      setLoading(true);
       const endpoint = authMode === 'login' ? 'login' : 'register';
       const response = await axios.post(`${API}/auth/${endpoint}`, authForm);
       
@@ -179,24 +180,52 @@ function App() {
       // Reset form
       setAuthForm({ email: '', password: '', name: '' });
       
-      // Refresh app state
-      await updateStats();
-      await getNextPair();
+      // Clear any existing session since we're now authenticated
+      setSessionId(null);
+      
+      // Small delay to ensure token is set before making requests
+      setTimeout(async () => {
+        await updateStats();
+        await getNextPair();
+        setLoading(false);
+      }, 100);
       
     } catch (error) {
       console.error('Auth error:', error);
       alert(error.response?.data?.detail || 'Authentication failed');
+      setLoading(false);
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    // Clear auth state
     localStorage.removeItem('token');
     setToken(null);
     setUser(null);
-    axios.defaults.headers.common['Authorization'] = '';
+    setShowProfile(false);
+    setShowRecommendations(false);
+    delete axios.defaults.headers.common['Authorization'];
     
-    // Reinitialize as guest
-    initializeApp();
+    // Reset app state
+    setCurrentPair(null);
+    setUserStats(null);
+    setRecommendations([]);
+    setVotingHistory([]);
+    
+    // Reinitialize as guest with a fresh session
+    try {
+      const sessionResponse = await axios.post(`${API}/session`);
+      const newSessionId = sessionResponse.data.session_id;
+      setSessionId(newSessionId);
+      
+      // Get fresh data for guest session
+      await updateStats(newSessionId);
+      await getNextPair(newSessionId);
+    } catch (error) {
+      console.error('Error reinitializing as guest:', error);
+      // If there's an error, just reload the page
+      window.location.reload();
+    }
   };
 
   const updateProfile = async (e) => {
