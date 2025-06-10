@@ -463,7 +463,77 @@ async def update_user_profile(
     )
 
 # Content and Voting Routes (Updated to support both users and sessions)
-@api_router.post("/clear-content")
+@api_router.post("/initialize-content")
+async def initialize_content():
+    """Initialize database with popular movies and TV shows"""
+    try:
+        # Check if content already exists
+        existing_count = await db.content.count_documents({})
+        if existing_count > 100:  # Only reinitialize if we have less than 100 items
+            return {"message": f"Content already initialized with {existing_count} items"}
+        
+        initialized = {"movies": 0, "series": 0, "errors": [], "skipped": 0}
+        
+        # Process movies in batches to respect API limits
+        print(f"Initializing {len(POPULAR_MOVIES)} movies...")
+        for i, movie in enumerate(POPULAR_MOVIES):
+            try:
+                # Check if movie already exists
+                existing_movie = await db.content.find_one({"title": movie, "content_type": "movie"})
+                if existing_movie:
+                    initialized["skipped"] += 1
+                    continue
+                    
+                await search_and_store_content(movie, "movie")
+                initialized["movies"] += 1
+                print(f"Added movie {i+1}/{len(POPULAR_MOVIES)}: {movie}")
+                
+                # Small delay to be respectful to OMDB API
+                if i % 10 == 0 and i > 0:
+                    await asyncio.sleep(1)
+                    
+            except Exception as e:
+                error_msg = f"Movie {movie}: {str(e)}"
+                initialized["errors"].append(error_msg)
+                print(f"Error adding {movie}: {str(e)}")
+        
+        # Process TV shows in batches
+        print(f"Initializing {len(POPULAR_TV_SHOWS)} TV shows...")
+        for i, show in enumerate(POPULAR_TV_SHOWS):
+            try:
+                # Check if show already exists
+                existing_show = await db.content.find_one({"title": show, "content_type": "series"})
+                if existing_show:
+                    initialized["skipped"] += 1
+                    continue
+                    
+                await search_and_store_content(show, "series")
+                initialized["series"] += 1
+                print(f"Added TV show {i+1}/{len(POPULAR_TV_SHOWS)}: {show}")
+                
+                # Small delay to be respectful to OMDB API
+                if i % 10 == 0 and i > 0:
+                    await asyncio.sleep(1)
+                    
+            except Exception as e:
+                error_msg = f"Series {show}: {str(e)}"
+                initialized["errors"].append(error_msg)
+                print(f"Error adding {show}: {str(e)}")
+        
+        # Get final count
+        final_count = await db.content.count_documents({})
+        
+        result = {
+            **initialized,
+            "total_items": final_count,
+            "message": f"Content initialization completed. Total items: {final_count}"
+        }
+        
+        print(f"Initialization complete: {initialized['movies']} movies, {initialized['series']} series, {initialized['skipped']} skipped, {len(initialized['errors'])} errors")
+        return result
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 async def clear_content():
     """Clear all content from database"""
     try:
