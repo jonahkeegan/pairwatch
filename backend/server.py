@@ -463,7 +463,31 @@ async def update_user_profile(
     )
 
 # Content and Voting Routes (Updated to support both users and sessions)
-@api_router.post("/initialize-content")
+@api_router.post("/clear-content")
+async def clear_content():
+    """Clear all content from database"""
+    try:
+        result = await db.content.delete_many({})
+        return {"message": f"Cleared {result.deleted_count} content items"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/force-reinitialize-content")
+async def force_reinitialize_content():
+    """Force reinitialize content by clearing and reloading"""
+    try:
+        # Clear existing content
+        clear_result = await db.content.delete_many({})
+        
+        # Reinitialize
+        init_result = await initialize_content()
+        
+        return {
+            "cleared": clear_result.deleted_count,
+            "reinitialized": init_result
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 async def initialize_content():
     """Initialize database with popular movies and TV shows"""
     try:
