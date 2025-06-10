@@ -48,10 +48,22 @@ function App() {
     }
   }, [token]);
 
-  // Initialize app
+  // Store session in localStorage for persistence
   useEffect(() => {
-    initializeApp();
-  }, []);
+    const storedSessionId = localStorage.getItem('guestSessionId');
+    if (!user && !sessionId && storedSessionId) {
+      setSessionId(storedSessionId);
+    }
+  }, [user, sessionId]);
+
+  // Save session to localStorage when it changes
+  useEffect(() => {
+    if (sessionId && !user) {
+      localStorage.setItem('guestSessionId', sessionId);
+    } else if (user) {
+      localStorage.removeItem('guestSessionId');
+    }
+  }, [sessionId, user]);
 
   const getCurrentUser = async () => {
     try {
