@@ -2,29 +2,44 @@ import requests
 import unittest
 import time
 import sys
+import random
+import string
 from datetime import datetime
 
 class MoviePreferenceAPITester:
     def __init__(self, base_url="https://c62d4176-fc83-406e-a031-ac397638707a.preview.emergentagent.com/api"):
         self.base_url = base_url
         self.session_id = None
+        self.auth_token = None
+        self.user_id = None
         self.tests_run = 0
         self.tests_passed = 0
         self.test_results = []
+        
+        # Test user credentials
+        self.test_user_email = f"test_user_{datetime.now().strftime('%Y%m%d%H%M%S')}@example.com"
+        self.test_user_password = "TestPassword123!"
+        self.test_user_name = f"Test User {datetime.now().strftime('%H%M%S')}"
 
-    def run_test(self, name, method, endpoint, expected_status, data=None):
+    def run_test(self, name, method, endpoint, expected_status, data=None, auth=False, params=None):
         """Run a single API test"""
         url = f"{self.base_url}/{endpoint}"
         headers = {'Content-Type': 'application/json'}
+        
+        # Add authorization header if needed
+        if auth and self.auth_token:
+            headers['Authorization'] = f'Bearer {self.auth_token}'
         
         self.tests_run += 1
         print(f"\n🔍 Testing {name}...")
         
         try:
             if method == 'GET':
-                response = requests.get(url, headers=headers)
+                response = requests.get(url, headers=headers, params=params)
             elif method == 'POST':
                 response = requests.post(url, json=data, headers=headers)
+            elif method == 'PUT':
+                response = requests.put(url, json=data, headers=headers)
 
             success = response.status_code == expected_status
             if success:
