@@ -49,6 +49,28 @@
   .voting-card:hover {
     transform: scale(1.02);
   }
+  
+  .voting-card:active {
+    transform: scale(0.98);
+  }
+}
+
+/* Improved touch targets for mobile */
+@media (max-width: 768px) {
+  .vote-card {
+    min-height: 300px;
+    padding: 1rem;
+    touch-action: manipulation;
+  }
+  
+  .vote-card img {
+    height: 180px;
+  }
+  
+  .vote-card h3 {
+    font-size: 1.125rem;
+    line-height: 1.4;
+  }
 }
 
 /* Loading animation */
@@ -104,6 +126,18 @@
   transform: translateY(0);
 }
 
+/* Enhanced mobile voting card animations */
+@media (max-width: 768px) {
+  .vote-card {
+    transition: all 0.2s ease;
+  }
+  
+  .vote-card:active {
+    transform: scale(0.95);
+    opacity: 0.9;
+  }
+}
+
 /* Progress bar styling */
 .progress-bar {
   background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
@@ -128,16 +162,15 @@
   }
 }
 
-/* Mobile touch improvements */
-@media (max-width: 768px) {
-  .vote-card {
-    min-height: 400px;
-    padding: 1rem;
-  }
-  
-  .vote-card img {
-    height: 200px;
-  }
+/* Voting success animation */
+@keyframes voteSuccess {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.vote-success {
+  animation: voteSuccess 0.3s ease-in-out;
 }
 
 /* Custom scrollbar for webkit browsers */
@@ -156,4 +189,43 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.5);
+}
+
+/* Improved form styling */
+.auth-form input {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+.auth-form input:focus {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+/* Better button press feedback */
+button:active {
+  transform: translateY(1px);
+}
+
+/* Accessibility improvements */
+@media (prefers-reduced-motion: reduce) {
+  .transition-all,
+  .vote-card,
+  .recommendation-card,
+  .vote-success {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .bg-opacity-10 {
+    background-color: rgba(255, 255, 255, 0.3);
+  }
+  
+  .bg-opacity-20 {
+    background-color: rgba(255, 255, 255, 0.4);
+  }
 }
