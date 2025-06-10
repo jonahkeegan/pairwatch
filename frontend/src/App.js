@@ -304,6 +304,16 @@ function App() {
     setShowProfile(!showProfile);
   };
 
+  const openPosterModal = (item) => {
+    setSelectedPoster(item);
+    setShowPosterModal(true);
+  };
+
+  const closePosterModal = () => {
+    setShowPosterModal(false);
+    setSelectedPoster(null);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center">
