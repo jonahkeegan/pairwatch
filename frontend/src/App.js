@@ -23,6 +23,8 @@ function App() {
   const [showProfile, setShowProfile] = useState(false);
   const [votingHistory, setVotingHistory] = useState([]);
   const [contentInitialized, setContentInitialized] = useState(false);
+  const [showPosterModal, setShowPosterModal] = useState(false);
+  const [selectedPoster, setSelectedPoster] = useState(null);
 
   // Auth form state
   const [authForm, setAuthForm] = useState({
