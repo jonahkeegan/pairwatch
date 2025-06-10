@@ -148,11 +148,30 @@ function App() {
         voteData.session_id = sessionId;
       }
       
-      await axios.post(`${API}/vote`, voteData);
+      const voteResponse = await axios.post(`${API}/vote`, voteData);
       
-      // Update stats and get next pair
-      await updateStats();
+      // Update stats immediately with response data
+      if (voteResponse.data.total_votes) {
+        setUserStats(prev => ({
+          ...prev,
+          total_votes: voteResponse.data.total_votes,
+          votes_until_recommendations: Math.max(0, 36 - voteResponse.data.total_votes),
+          recommendations_available: voteResponse.data.recommendations_available
+        }));
+      }
+      
+      // Get next pair
       await getNextPair();
+      
+      // Check if recommendations are now available
+      if (voteResponse.data.recommendations_available && !showRecommendations) {
+        const params = {};
+        if (!user && sessionId) {
+          params.session_id = sessionId;
+        }
+        const recResponse = await axios.get(`${API}/recommendations`, { params });
+        setRecommendations(recResponse.data);
+      }
       
     } catch (error) {
       console.error('Vote error:', error);
