@@ -510,6 +510,9 @@ class MoviePreferenceAPITester:
         """Run all API tests in sequence"""
         print("\n🚀 Starting Movie Preference API Tests\n")
         
+        # Test OMDB API integration directly
+        self.test_omdb_api_integration()
+        
         # Initialize content
         self.test_initialize_content()
         
