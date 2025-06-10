@@ -487,26 +487,26 @@ function App() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
       {/* Header */}
-      <div className="flex justify-between items-center p-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 space-y-2 sm:space-y-0">
         <div className="text-white">
-          <h1 className="text-2xl font-bold">Movie Preferences</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Movie Preferences</h1>
         </div>
         
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-2 sm:space-x-4">
           {user ? (
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2 sm:space-x-4">
               <button
                 onClick={toggleProfile}
-                className="text-white hover:text-blue-200 flex items-center"
+                className="text-white hover:text-blue-200 flex items-center text-sm sm:text-base"
               >
                 {user.avatar_url && (
-                  <img src={user.avatar_url} alt={user.name} className="w-8 h-8 rounded-full mr-2" />
+                  <img src={user.avatar_url} alt={user.name} className="w-6 h-6 sm:w-8 sm:h-8 rounded-full mr-2" />
                 )}
-                {user.name}
+                <span className="truncate max-w-24 sm:max-w-none">{user.name}</span>
               </button>
               <button
                 onClick={logout}
-                className="text-red-300 hover:text-red-200"
+                className="text-red-300 hover:text-red-200 text-sm sm:text-base"
               >
                 Logout
               </button>
@@ -514,7 +514,7 @@ function App() {
           ) : (
             <button
               onClick={() => setShowAuth(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 sm:px-4 rounded-lg transition-colors text-sm sm:text-base"
             >
               Login / Sign Up
             </button>
@@ -523,18 +523,18 @@ function App() {
       </div>
 
       {/* Stats and Voting Interface */}
-      <div className="text-center py-6 px-4">
-        <p className="text-blue-200 mb-4">Choose your favorites to discover your taste</p>
+      <div className="text-center py-4 px-4">
+        <p className="text-blue-200 mb-4 text-sm sm:text-base">Choose your favorites to discover your taste</p>
         
         {userStats && (
-          <div className="mt-4 flex justify-center space-x-8 text-white">
+          <div className="mt-4 flex justify-center space-x-4 sm:space-x-8 text-white">
             <div className="text-center">
-              <div className="text-2xl font-bold">{userStats.total_votes}</div>
-              <div className="text-sm text-blue-200">Total Votes</div>
+              <div className="text-xl sm:text-2xl font-bold">{userStats.total_votes}</div>
+              <div className="text-xs sm:text-sm text-blue-200">Total Votes</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold">{userStats.votes_until_recommendations}</div>
-              <div className="text-sm text-blue-200">Until Recommendations</div>
+              <div className="text-xl sm:text-2xl font-bold">{userStats.votes_until_recommendations}</div>
+              <div className="text-xs sm:text-sm text-blue-200">Until Recommendations</div>
             </div>
           </div>
         )}
@@ -542,7 +542,7 @@ function App() {
         {userStats?.recommendations_available && (
           <button
             onClick={toggleRecommendations}
-            className="mt-4 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-colors"
+            className="mt-4 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 sm:px-4 rounded-lg transition-colors text-sm sm:text-base"
           >
             View My Recommendations
           </button>
