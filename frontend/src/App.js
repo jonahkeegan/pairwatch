@@ -314,7 +314,49 @@ function App() {
     setSelectedPoster(null);
   };
 
-  if (loading) {
+  // Poster Modal
+  if (showPosterModal && selectedPoster) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4" onClick={closePosterModal}>
+        <div className="max-w-2xl max-h-full bg-white bg-opacity-10 backdrop-blur-lg rounded-xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+          <div className="relative">
+            <button
+              onClick={closePosterModal}
+              className="absolute top-4 right-4 text-white bg-black bg-opacity-50 rounded-full w-10 h-10 flex items-center justify-center hover:bg-opacity-70 transition-all z-10"
+            >
+              ✕
+            </button>
+            {selectedPoster.poster && (
+              <img 
+                src={selectedPoster.poster} 
+                alt={selectedPoster.title}
+                className="w-full max-h-screen object-contain"
+              />
+            )}
+          </div>
+          <div className="p-6 text-white">
+            <h2 className="text-3xl font-bold mb-2">{selectedPoster.title}</h2>
+            <p className="text-blue-200 mb-2">({selectedPoster.year})</p>
+            <p className="text-lg text-blue-100 mb-4">{selectedPoster.genre}</p>
+            {selectedPoster.director && (
+              <p className="text-gray-300 mb-2"><strong>Director:</strong> {selectedPoster.director}</p>
+            )}
+            {selectedPoster.actors && (
+              <p className="text-gray-300 mb-4"><strong>Starring:</strong> {selectedPoster.actors}</p>
+            )}
+            {selectedPoster.plot && (
+              <p className="text-gray-200 leading-relaxed">{selectedPoster.plot}</p>
+            )}
+            {selectedPoster.rating && selectedPoster.rating !== "N/A" && (
+              <div className="mt-4 inline-block bg-yellow-600 text-white px-3 py-1 rounded-full">
+                ⭐ {selectedPoster.rating}/10
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center">
         <div className="text-center">
