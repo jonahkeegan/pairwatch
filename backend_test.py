@@ -396,8 +396,22 @@ class MoviePreferenceAPITester:
         
         if success and isinstance(response, list):
             print(f"✅ Received {len(response)} recommendations")
+            
+            # Check for poster data in recommendations
+            poster_count = 0
             for i, rec in enumerate(response):
                 print(f"  {i+1}. {rec.get('title')} - {rec.get('reason')}")
+                
+                if rec.get('poster'):
+                    poster_count += 1
+                    print(f"    ✅ Has poster URL: {rec.get('poster')[:50]}...")
+                else:
+                    print(f"    ⚠️ No poster available")
+                    
+                if rec.get('imdb_id'):
+                    print(f"    ✅ Has IMDB ID: {rec.get('imdb_id')}")
+            
+            print(f"✅ {poster_count}/{len(response)} recommendations have poster images")
         
         return success, response
 
