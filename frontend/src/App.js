@@ -217,22 +217,24 @@ function App() {
   };
 
   const logout = async () => {
-    // Clear auth state
-    localStorage.removeItem('token');
-    setToken(null);
-    setUser(null);
-    setShowProfile(false);
-    setShowRecommendations(false);
-    delete axios.defaults.headers.common['Authorization'];
-    
-    // Reset app state
-    setCurrentPair(null);
-    setUserStats(null);
-    setRecommendations([]);
-    setVotingHistory([]);
-    
-    // Reinitialize as guest with a fresh session
     try {
+      setLoading(true);
+      
+      // Clear auth state
+      localStorage.removeItem('token');
+      setToken(null);
+      setUser(null);
+      setShowProfile(false);
+      setShowRecommendations(false);
+      delete axios.defaults.headers.common['Authorization'];
+      
+      // Reset app state
+      setCurrentPair(null);
+      setUserStats(null);
+      setRecommendations([]);
+      setVotingHistory([]);
+      
+      // Reinitialize as guest with a fresh session
       const sessionResponse = await axios.post(`${API}/session`);
       const newSessionId = sessionResponse.data.session_id;
       setSessionId(newSessionId);
@@ -240,10 +242,13 @@ function App() {
       // Get fresh data for guest session
       await updateStats(newSessionId);
       await getNextPair(newSessionId);
+      
     } catch (error) {
-      console.error('Error reinitializing as guest:', error);
-      // If there's an error, just reload the page
+      console.error('Error during logout:', error);
+      // Force reload as fallback
       window.location.reload();
+    } finally {
+      setLoading(false);
     }
   };
 
