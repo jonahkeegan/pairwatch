@@ -98,11 +98,11 @@ function App() {
     }
   };
 
-  const updateStats = async () => {
+  const updateStats = async (currentSessionId = sessionId) => {
     try {
       const params = {};
-      if (!user && sessionId) {
-        params.session_id = sessionId;
+      if (!user && currentSessionId) {
+        params.session_id = currentSessionId;
       }
       
       const statsResponse = await axios.get(`${API}/stats`, { params });
@@ -118,11 +118,11 @@ function App() {
     }
   };
 
-  const getNextPair = async () => {
+  const getNextPair = async (currentSessionId = sessionId) => {
     try {
       const params = {};
-      if (!user && sessionId) {
-        params.session_id = sessionId;
+      if (!user && currentSessionId) {
+        params.session_id = currentSessionId;
       }
       
       const pairResponse = await axios.get(`${API}/voting-pair`, { params });
