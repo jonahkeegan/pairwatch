@@ -468,6 +468,9 @@ class MoviePreferenceAPITester:
         # Initialize content
         self.test_initialize_content()
         
+        # Test 1: Guest Session Flow
+        print("\n📋 Testing Guest Session Flow")
+        
         # Create session
         session_success, _ = self.test_create_session()
         if not session_success:
@@ -500,6 +503,21 @@ class MoviePreferenceAPITester:
         if self.simulate_voting_to_threshold():
             # Now we should be able to get recommendations
             self.test_get_recommendations()
+        
+        # Test 2: Authentication Flow
+        print("\n📋 Testing Authentication Flow")
+        self.test_auth_flow()
+        
+        # Test 3: Authenticated Voting Flow
+        print("\n📋 Testing Authenticated Voting Flow")
+        
+        # Simulate voting to threshold with authenticated user
+        if self.auth_token and self.simulate_voting_to_threshold(use_auth=True):
+            # Get recommendations as authenticated user
+            self.test_get_recommendations(use_auth=True)
+            
+            # Get voting history after multiple votes
+            self.test_get_voting_history()
         
         # Print results
         print(f"\n📊 Tests passed: {self.tests_passed}/{self.tests_run}")
