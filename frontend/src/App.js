@@ -80,14 +80,16 @@ function App() {
       }
       
       // If not logged in, create a guest session
-      if (!token) {
+      let currentSessionId = sessionId;
+      if (!token && !currentSessionId) {
         const sessionResponse = await axios.post(`${API}/session`);
-        setSessionId(sessionResponse.data.session_id);
+        currentSessionId = sessionResponse.data.session_id;
+        setSessionId(currentSessionId);
       }
       
-      // Get initial stats and voting pair
-      await updateStats();
-      await getNextPair();
+      // Get initial stats and voting pair (with proper session ID)
+      await updateStats(currentSessionId);
+      await getNextPair(currentSessionId);
       
     } catch (error) {
       console.error('Initialization error:', error);
