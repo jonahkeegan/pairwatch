@@ -5,6 +5,7 @@ import sys
 import random
 import string
 from datetime import datetime
+import json
 
 class MoviePreferenceAPITester:
     def __init__(self, base_url="https://c62d4176-fc83-406e-a031-ac397638707a.preview.emergentagent.com/api"):
