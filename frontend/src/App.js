@@ -559,7 +559,7 @@ function App() {
             <p className="text-blue-200">Tap the one you like more</p>
           </div>
           
-          <div className="grid md:grid-cols-2 gap-8">
+          <div className="grid md:grid-cols-2 gap-4 md:gap-8 relative">
             {/* Item 1 */}
             <div 
               className={`bg-white bg-opacity-10 backdrop-blur-lg rounded-xl overflow-hidden cursor-pointer transform transition-all duration-200 hover:scale-105 hover:bg-opacity-20 ${voting ? 'pointer-events-none opacity-75' : ''}`}
@@ -569,22 +569,29 @@ function App() {
                 <img 
                   src={currentPair.item1.poster} 
                   alt={currentPair.item1.title}
-                  className="w-full h-80 object-cover"
+                  className="w-full h-48 md:h-80 object-cover"
                 />
               )}
-              <div className="p-6 text-white">
-                <h3 className="text-2xl font-bold mb-2">{currentPair.item1.title}</h3>
+              <div className="p-4 md:p-6 text-white">
+                <h3 className="text-lg md:text-2xl font-bold mb-2">{currentPair.item1.title}</h3>
                 <p className="text-blue-200 mb-2">({currentPair.item1.year})</p>
-                <p className="text-sm text-blue-100">{currentPair.item1.genre}</p>
+                <p className="text-sm text-blue-100 mb-2">{currentPair.item1.genre}</p>
                 {currentPair.item1.plot && (
-                  <p className="text-sm text-gray-300 mt-2 line-clamp-3">{currentPair.item1.plot}</p>
+                  <p className="text-xs md:text-sm text-gray-300 line-clamp-3">{currentPair.item1.plot}</p>
                 )}
               </div>
             </div>
 
-            {/* VS Divider */}
-            <div className="md:hidden flex items-center justify-center py-4">
-              <div className="bg-white bg-opacity-20 rounded-full px-6 py-2">
+            {/* VS Divider - Mobile */}
+            <div className="md:hidden flex items-center justify-center py-2">
+              <div className="bg-white bg-opacity-20 rounded-full px-4 py-2">
+                <span className="text-white font-bold text-lg">VS</span>
+              </div>
+            </div>
+
+            {/* VS Divider - Desktop */}
+            <div className="hidden md:flex absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
+              <div className="bg-white bg-opacity-20 rounded-full px-6 py-3">
                 <span className="text-white font-bold text-xl">VS</span>
               </div>
             </div>
@@ -598,24 +605,17 @@ function App() {
                 <img 
                   src={currentPair.item2.poster} 
                   alt={currentPair.item2.title}
-                  className="w-full h-80 object-cover"
+                  className="w-full h-48 md:h-80 object-cover"
                 />
               )}
-              <div className="p-6 text-white">
-                <h3 className="text-2xl font-bold mb-2">{currentPair.item2.title}</h3>
+              <div className="p-4 md:p-6 text-white">
+                <h3 className="text-lg md:text-2xl font-bold mb-2">{currentPair.item2.title}</h3>
                 <p className="text-blue-200 mb-2">({currentPair.item2.year})</p>
-                <p className="text-sm text-blue-100">{currentPair.item2.genre}</p>
+                <p className="text-sm text-blue-100 mb-2">{currentPair.item2.genre}</p>
                 {currentPair.item2.plot && (
-                  <p className="text-sm text-gray-300 mt-2 line-clamp-3">{currentPair.item2.plot}</p>
+                  <p className="text-xs md:text-sm text-gray-300 line-clamp-3">{currentPair.item2.plot}</p>
                 )}
               </div>
-            </div>
-          </div>
-
-          {/* Hidden VS on desktop */}
-          <div className="hidden md:flex absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
-            <div className="bg-white bg-opacity-20 rounded-full px-8 py-4">
-              <span className="text-white font-bold text-2xl">VS</span>
             </div>
           </div>
         </div>
