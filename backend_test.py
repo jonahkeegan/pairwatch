@@ -180,18 +180,70 @@ class MoviePreferenceAPITester:
         
         return False, response
 
-    def test_get_voting_pair(self):
-        """Test getting a voting pair"""
+    def test_initialize_content(self):
+        """Test content initialization"""
+        success, response = self.run_test(
+            "Initialize Content",
+            "POST",
+            "initialize-content",
+            200,
+            data={}
+        )
+        return success, response
+
+    def test_create_session(self):
+        """Test session creation"""
+        success, response = self.run_test(
+            "Create Session",
+            "POST",
+            "session",
+            200,
+            data={}
+        )
+        if success and 'session_id' in response:
+            self.session_id = response['session_id']
+            print(f"Session ID: {self.session_id}")
+            return True, response
+        return False, response
+
+    def test_get_session(self):
+        """Test getting session info"""
         if not self.session_id:
             print("❌ No session ID available")
-            self.test_results.append({"name": "Get Voting Pair", "status": "SKIP", "details": "No session ID available"})
+            self.test_results.append({"name": "Get Session", "status": "SKIP", "details": "No session ID available"})
+            return False, {}
+        
+        success, response = self.run_test(
+            "Get Session",
+            "GET",
+            f"session/{self.session_id}",
+            200
+        )
+        return success, response
+
+    def test_get_voting_pair(self, use_auth=False):
+        """Test getting a voting pair"""
+        params = {}
+        
+        if use_auth and self.auth_token:
+            # Use authenticated user
+            auth = True
+        elif self.session_id:
+            # Use guest session
+            params = {"session_id": self.session_id}
+            auth = False
+        else:
+            print("❌ No session ID or auth token available")
+            self.test_results.append({"name": "Get Voting Pair", "status": "SKIP", "details": "No session ID or auth token available"})
             return False, {}
         
         success, response = self.run_test(
             "Get Voting Pair",
             "GET",
-            f"voting-pair/{self.session_id}",
-            200
+            "voting-pair",
+            200,
+            auth=auth,
+            params=params
         )
         
         # Verify that the pair contains items of the same type
@@ -207,26 +259,33 @@ class MoviePreferenceAPITester:
         
         return success, response
 
-    def test_submit_vote(self, winner_id, loser_id, content_type):
+    def test_submit_vote(self, winner_id, loser_id, content_type, use_auth=False):
         """Test submitting a vote"""
-        if not self.session_id:
-            print("❌ No session ID available")
-            self.test_results.append({"name": "Submit Vote", "status": "SKIP", "details": "No session ID available"})
-            return False, {}
-        
         data = {
-            "session_id": self.session_id,
             "winner_id": winner_id,
             "loser_id": loser_id,
             "content_type": content_type
         }
+        
+        if not use_auth or not self.auth_token:
+            # Guest session vote
+            if not self.session_id:
+                print("❌ No session ID available")
+                self.test_results.append({"name": "Submit Vote", "status": "SKIP", "details": "No session ID available"})
+                return False, {}
+            data["session_id"] = self.session_id
+            auth = False
+        else:
+            # Authenticated user vote
+            auth = True
         
         success, response = self.run_test(
             "Submit Vote",
             "POST",
             "vote",
             200,
-            data=data
+            data=data,
+            auth=auth
         )
         
         # Verify vote was recorded
