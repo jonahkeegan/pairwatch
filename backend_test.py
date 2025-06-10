@@ -370,13 +370,13 @@ class MoviePreferenceAPITester:
         
         return success, response
 
-    def simulate_voting_to_threshold(self):
+    def simulate_voting_to_threshold(self, use_auth=False):
         """Simulate voting until we reach the recommendation threshold (36 votes)"""
-        print("\n🔄 Simulating votes to reach recommendation threshold...")
+        print(f"\n🔄 Simulating votes to reach recommendation threshold using {'authenticated user' if use_auth else 'guest session'}...")
         
         for i in range(36):
             # Get a voting pair
-            success, pair = self.test_get_voting_pair()
+            success, pair = self.test_get_voting_pair(use_auth)
             if not success:
                 print(f"❌ Failed to get voting pair on iteration {i+1}")
                 return False
@@ -385,7 +385,8 @@ class MoviePreferenceAPITester:
             vote_success, _ = self.test_submit_vote(
                 pair['item1']['id'], 
                 pair['item2']['id'],
-                pair['content_type']
+                pair['content_type'],
+                use_auth
             )
             
             if not vote_success:
@@ -397,6 +398,67 @@ class MoviePreferenceAPITester:
                 print(f"Progress: {i+1}/36 votes")
         
         print("✅ Successfully completed 36 votes")
+        return True
+    
+    def test_auth_flow(self):
+        """Test the complete authentication flow"""
+        print("\n🔑 Testing Authentication Flow")
+        
+        # Register a new user
+        reg_success, _ = self.test_user_registration()
+        if not reg_success:
+            print("❌ Failed to register user, stopping auth flow tests")
+            return False
+        
+        # Get current user profile
+        self.test_get_current_user()
+        
+        # Update profile
+        self.test_update_profile()
+        
+        # Get voting pair as authenticated user
+        pair_success, pair = self.test_get_voting_pair(use_auth=True)
+        if not pair_success:
+            print("❌ Failed to get voting pair as authenticated user")
+            return False
+        
+        # Submit a vote as authenticated user
+        vote_success, _ = self.test_submit_vote(
+            pair['item1']['id'], 
+            pair['item2']['id'],
+            pair['content_type'],
+            use_auth=True
+        )
+        
+        if not vote_success:
+            print("❌ Failed to submit vote as authenticated user")
+            return False
+        
+        # Get stats as authenticated user
+        self.test_get_stats(use_auth=True)
+        
+        # Get voting history (should be empty or have one vote)
+        self.test_get_voting_history()
+        
+        # Logout (clear token)
+        old_token = self.auth_token
+        self.auth_token = None
+        
+        # Login again
+        login_success, _ = self.test_user_login()
+        if not login_success:
+            print("❌ Failed to login with existing user")
+            return False
+        
+        # Verify token changed
+        if old_token == self.auth_token:
+            print("⚠️ Warning: Login token is the same as registration token")
+        else:
+            print("✅ Login token differs from registration token")
+        
+        # Get current user profile again
+        self.test_get_current_user()
+        
         return True
 
     def run_all_tests(self):
