@@ -295,18 +295,29 @@ class MoviePreferenceAPITester:
         
         return success, response
 
-    def test_get_stats(self):
+    def test_get_stats(self, use_auth=False):
         """Test getting user stats"""
-        if not self.session_id:
-            print("❌ No session ID available")
-            self.test_results.append({"name": "Get Stats", "status": "SKIP", "details": "No session ID available"})
+        params = {}
+        
+        if use_auth and self.auth_token:
+            # Use authenticated user
+            auth = True
+        elif self.session_id:
+            # Use guest session
+            params = {"session_id": self.session_id}
+            auth = False
+        else:
+            print("❌ No session ID or auth token available")
+            self.test_results.append({"name": "Get Stats", "status": "SKIP", "details": "No session ID or auth token available"})
             return False, {}
         
         success, response = self.run_test(
             "Get User Stats",
             "GET",
-            f"stats/{self.session_id}",
-            200
+            "stats",
+            200,
+            auth=auth,
+            params=params
         )
         
         if success:
@@ -315,18 +326,28 @@ class MoviePreferenceAPITester:
             print(f"Series votes: {response.get('series_votes')}")
             print(f"Votes until recommendations: {response.get('votes_until_recommendations')}")
             print(f"Recommendations available: {response.get('recommendations_available')}")
+            print(f"User authenticated: {response.get('user_authenticated')}")
         
         return success, response
 
-    def test_get_recommendations(self):
+    def test_get_recommendations(self, use_auth=False):
         """Test getting recommendations (requires 36+ votes)"""
-        if not self.session_id:
-            print("❌ No session ID available")
-            self.test_results.append({"name": "Get Recommendations", "status": "SKIP", "details": "No session ID available"})
+        params = {}
+        
+        if use_auth and self.auth_token:
+            # Use authenticated user
+            auth = True
+        elif self.session_id:
+            # Use guest session
+            params = {"session_id": self.session_id}
+            auth = False
+        else:
+            print("❌ No session ID or auth token available")
+            self.test_results.append({"name": "Get Recommendations", "status": "SKIP", "details": "No session ID or auth token available"})
             return False, {}
         
         # First check if we have enough votes
-        _, stats = self.test_get_stats()
+        _, stats = self.test_get_stats(use_auth)
         if not stats.get('recommendations_available', False):
             print(f"⚠️ Not enough votes for recommendations. Current: {stats.get('total_votes', 0)}, Required: 36")
             self.test_results.append({"name": "Get Recommendations", "status": "SKIP", 
@@ -336,8 +357,10 @@ class MoviePreferenceAPITester:
         success, response = self.run_test(
             "Get Recommendations",
             "GET",
-            f"recommendations/{self.session_id}",
-            200
+            "recommendations",
+            200,
+            auth=auth,
+            params=params
         )
         
         if success and isinstance(response, list):
