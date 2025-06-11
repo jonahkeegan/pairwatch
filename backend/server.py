@@ -837,6 +837,18 @@ async def submit_vote(
         user_votes = await db.votes.find({"user_id": current_user.id}).to_list(length=None)
         total_votes = len(user_votes)
         
+        # Automatically trigger recommendation generation in the background
+        # when user reaches thresholds or has significant new activity
+        if total_votes >= 10:
+            try:
+                # Check if we should auto-generate recommendations
+                should_refresh = await check_and_auto_refresh_recommendations(current_user.id)
+                if should_refresh or total_votes in [10, 15, 20, 25, 30, 40, 50]:  # Key milestones
+                    # Run recommendation generation in background (fire and forget)
+                    asyncio.create_task(auto_generate_ai_recommendations(current_user.id))
+            except Exception as e:
+                print(f"Background recommendation generation error: {str(e)}")
+        
         return {
             "vote_recorded": True,
             "total_votes": total_votes,
