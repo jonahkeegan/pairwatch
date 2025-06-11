@@ -1076,6 +1076,9 @@ class MoviePreferenceAPITester:
         # Test independent content interactions (new feature)
         self.test_independent_content_interactions()
         
+        # Test deselection functionality (new feature)
+        self.test_deselection_functionality()
+        
         # Get a voting pair to interact with
         pair_success, pair = self.test_get_voting_pair(use_auth=True)
         if not pair_success:
