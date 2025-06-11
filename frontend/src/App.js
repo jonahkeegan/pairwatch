@@ -385,7 +385,7 @@ function App() {
           setRecommendations(recResponse.data);
         } catch (error) {
           console.error('Failed to load recommendations:', error);
-          alert('Need at least 36 votes for recommendations!');
+          alert('Need at least 10 votes for recommendations!');
           return;
         }
       }
