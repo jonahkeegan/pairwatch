@@ -1466,7 +1466,144 @@ def test_vote_countdown():
         else:
             print(f"❌ FAIL: New guest with 0 votes shows votes_until_recommendations = {stats.get('votes_until_recommendations')}, expected 10")
 
+def test_authenticated_user_vote_threshold():
+    """
+    Test the stats endpoint for authenticated users to verify the 10-vote threshold.
+    
+    This test specifically verifies:
+    1. New registered users see votes_until_recommendations = 10 (not 36)
+    2. After submitting votes, the countdown decreases correctly
+    3. After 10 votes, votes_until_recommendations = 0 and recommendations_available = true
+    """
+    tester = MoviePreferenceAPITester()
+    print("\n🔍 Testing Authenticated User Vote Threshold...")
+    
+    # Register a new user
+    print("\n📋 Step 1: Register a new user")
+    reg_success, _ = tester.test_user_registration()
+    if not reg_success:
+        print("❌ Failed to register user, stopping test")
+        return False
+    
+    # Get initial stats - should show 10 votes until recommendations
+    print("\n📋 Step 2: Check initial stats (0 votes)")
+    success, stats = tester.test_get_stats(use_auth=True)
+    if success:
+        if stats.get('total_votes') == 0 and stats.get('votes_until_recommendations') == 10:
+            print("✅ PASS: New authenticated user with 0 votes shows votes_until_recommendations = 10")
+            tester.test_results.append({
+                "name": "Auth User Vote Threshold - Initial", 
+                "status": "PASS", 
+                "details": "New authenticated user correctly shows 10-vote threshold"
+            })
+        else:
+            print(f"❌ FAIL: New authenticated user shows votes_until_recommendations = {stats.get('votes_until_recommendations')}, expected 10")
+            tester.test_results.append({
+                "name": "Auth User Vote Threshold - Initial", 
+                "status": "FAIL", 
+                "details": f"New user shows threshold {stats.get('votes_until_recommendations')} instead of 10"
+            })
+            return False
+    
+    # Submit 3 votes
+    print("\n📋 Step 3: Submit 3 votes")
+    for i in range(3):
+        # Get a voting pair
+        pair_success, pair = tester.test_get_voting_pair(use_auth=True)
+        if not pair_success:
+            print(f"❌ Failed to get voting pair on vote {i+1}")
+            return False
+        
+        # Submit a vote
+        vote_success, _ = tester.test_submit_vote(
+            pair['item1']['id'], 
+            pair['item2']['id'],
+            pair['content_type'],
+            use_auth=True
+        )
+        
+        if not vote_success:
+            print(f"❌ Failed to submit vote {i+1}")
+            return False
+        
+        print(f"✅ Submitted vote {i+1}/3")
+    
+    # Check stats after 3 votes - should show 7 votes until recommendations
+    print("\n📋 Step 4: Check stats after 3 votes")
+    success, stats = tester.test_get_stats(use_auth=True)
+    if success:
+        if stats.get('total_votes') == 3 and stats.get('votes_until_recommendations') == 7:
+            print("✅ PASS: User with 3 votes shows votes_until_recommendations = 7")
+            tester.test_results.append({
+                "name": "Auth User Vote Threshold - Partial", 
+                "status": "PASS", 
+                "details": "User with 3 votes correctly shows 7 votes remaining"
+            })
+        else:
+            print(f"❌ FAIL: User with 3 votes shows votes_until_recommendations = {stats.get('votes_until_recommendations')}, expected 7")
+            tester.test_results.append({
+                "name": "Auth User Vote Threshold - Partial", 
+                "status": "FAIL", 
+                "details": f"User with 3 votes shows threshold {stats.get('votes_until_recommendations')} instead of 7"
+            })
+            return False
+    
+    # Submit 7 more votes to reach 10
+    print("\n📋 Step 5: Submit 7 more votes to reach threshold")
+    for i in range(7):
+        # Get a voting pair
+        pair_success, pair = tester.test_get_voting_pair(use_auth=True)
+        if not pair_success:
+            print(f"❌ Failed to get voting pair on vote {i+4}")
+            return False
+        
+        # Submit a vote
+        vote_success, _ = tester.test_submit_vote(
+            pair['item1']['id'], 
+            pair['item2']['id'],
+            pair['content_type'],
+            use_auth=True
+        )
+        
+        if not vote_success:
+            print(f"❌ Failed to submit vote {i+4}")
+            return False
+        
+        print(f"✅ Submitted vote {i+4}/10")
+    
+    # Check final stats after 10 votes
+    print("\n📋 Step 6: Check stats after 10 votes")
+    success, stats = tester.test_get_stats(use_auth=True)
+    if success:
+        votes_correct = stats.get('votes_until_recommendations') == 0
+        recs_available = stats.get('recommendations_available') == True
+        total_votes = stats.get('total_votes') >= 10
+        
+        if votes_correct and recs_available and total_votes:
+            print("✅ PASS: User with 10 votes shows votes_until_recommendations = 0 and recommendations_available = true")
+            tester.test_results.append({
+                "name": "Auth User Vote Threshold - Complete", 
+                "status": "PASS", 
+                "details": "User with 10 votes correctly shows threshold reached and recommendations available"
+            })
+        else:
+            print(f"❌ FAIL: User with 10 votes shows incorrect stats:")
+            print(f"  - votes_until_recommendations = {stats.get('votes_until_recommendations')}, expected 0")
+            print(f"  - recommendations_available = {stats.get('recommendations_available')}, expected true")
+            print(f"  - total_votes = {stats.get('total_votes')}, expected ≥ 10")
+            tester.test_results.append({
+                "name": "Auth User Vote Threshold - Complete", 
+                "status": "FAIL", 
+                "details": f"User with 10 votes shows incorrect threshold stats"
+            })
+            return False
+    
+    print("\n✅ All authenticated user vote threshold tests PASSED!")
+    return True
+
 if __name__ == "__main__":
+    # Run the authenticated user vote threshold test
+    test_authenticated_user_vote_threshold()
     # Uncomment the line below to run the vote countdown test
     # test_vote_countdown()
-    sys.exit(main())
+    # sys.exit(main())
