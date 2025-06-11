@@ -1065,7 +1065,223 @@ async def get_content_user_status(
         "wants_to_watch": "want_to_watch" in [i["interaction_type"] for i in interactions],
         "not_interested": "not_interested" in [i["interaction_type"] for i in interactions]
     }
-async def get_voting_history(current_user: User = Depends(get_current_user)):
+# Initialize ML Recommendation Engine
+recommendation_engine = AdvancedRecommendationEngine()
+
+# ML-Powered Recommendation Routes
+@api_router.post("/recommendations/generate")
+async def generate_ml_recommendations(
+    current_user: User = Depends(get_current_user)
+):
+    """Generate ML-powered recommendations and store in algo_predicted watchlist"""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    
+    try:
+        # Get all content for feature extraction
+        all_content = await db.content.find().to_list(length=None)
+        
+        if not all_content:
+            raise HTTPException(status_code=400, detail="No content available for recommendations")
+        
+        # Extract content features
+        content_df = recommendation_engine.extract_content_features(all_content)
+        
+        # Build user profile from interactions
+        user_interactions = await db.user_interactions.find({"user_id": current_user.id}).to_list(length=None)
+        
+        # Also include vote data as interactions
+        user_votes = await db.votes.find({"user_id": current_user.id}).to_list(length=None)
+        
+        # Convert votes to interactions
+        for vote in user_votes:
+            # Add winner interaction
+            user_interactions.append({
+                "content_id": vote["winner_id"],
+                "interaction_type": "vote_winner",
+                "created_at": vote["created_at"]
+            })
+            # Add loser interaction  
+            user_interactions.append({
+                "content_id": vote["loser_id"],
+                "interaction_type": "vote_loser",
+                "created_at": vote["created_at"]
+            })
+        
+        # Add content details to interactions
+        for interaction in user_interactions:
+            content = await db.content.find_one({"id": interaction["content_id"]})
+            if content:
+                interaction["content"] = content
+        
+        # Build user profile
+        user_profile = recommendation_engine.build_user_profile(user_interactions)
+        
+        # Get watched content IDs
+        watched_interactions = await db.user_interactions.find({
+            "user_id": current_user.id,
+            "interaction_type": "watched"
+        }).to_list(length=None)
+        
+        watched_content_ids = [i["content_id"] for i in watched_interactions]
+        
+        # Also exclude content user marked as "not_interested"
+        not_interested = await db.user_interactions.find({
+            "user_id": current_user.id,
+            "interaction_type": "not_interested"
+        }).to_list(length=None)
+        
+        watched_content_ids.extend([i["content_id"] for i in not_interested])
+        
+        # Generate recommendations
+        recommendations = recommendation_engine.generate_recommendations(
+            user_profile, content_df, watched_content_ids, num_recommendations=15
+        )
+        
+        if not recommendations:
+            return {
+                "message": "No new recommendations available. Try interacting with more content!",
+                "recommendations_generated": 0
+            }
+        
+        # Clear existing algo recommendations
+        await db.algo_recommendations.delete_many({"user_id": current_user.id})
+        await db.user_watchlist.delete_many({
+            "user_id": current_user.id,
+            "watchlist_type": "algo_predicted"
+        })
+        
+        # Store recommendations
+        stored_count = 0
+        for rec in recommendations:
+            # Store in algo_recommendations
+            algo_rec = AlgoRecommendation(
+                user_id=current_user.id,
+                content_id=rec["content_id"],
+                recommendation_score=rec["score"],
+                reasoning=rec["reasoning"],
+                confidence=rec["confidence"]
+            )
+            await db.algo_recommendations.insert_one(algo_rec.dict())
+            
+            # Add to algo_predicted watchlist
+            watchlist_item = UserWatchlist(
+                user_id=current_user.id,
+                content_id=rec["content_id"],
+                priority=min(5, max(1, int(rec["score"] * 5))),  # Convert score to 1-5 priority
+                watchlist_type="algo_predicted"
+            )
+            await db.user_watchlist.insert_one(watchlist_item.dict())
+            stored_count += 1
+        
+        return {
+            "message": f"Generated {stored_count} personalized recommendations",
+            "recommendations_generated": stored_count,
+            "user_profile_strength": user_profile.get("preference_strength", 0.0),
+            "recommendation_categories": {
+                "high_confidence": len([r for r in recommendations if r["confidence"] > 0.7]),
+                "medium_confidence": len([r for r in recommendations if 0.4 <= r["confidence"] <= 0.7]),
+                "exploratory": len([r for r in recommendations if r["confidence"] < 0.4])
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Error generating recommendations: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate recommendations: {str(e)}")
+
+@api_router.get("/recommendations/refresh-needed")
+async def check_recommendations_refresh(
+    current_user: User = Depends(get_current_user)
+):
+    """Check if user needs fresh recommendations based on recent activity"""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    
+    # Get last recommendation generation time
+    latest_rec = await db.algo_recommendations.find({
+        "user_id": current_user.id
+    }).sort("created_at", -1).limit(1).to_list(length=1)
+    
+    if not latest_rec:
+        return {"refresh_needed": True, "reason": "No recommendations exist"}
+    
+    last_rec_time = latest_rec[0]["created_at"]
+    
+    # Get recent interactions since last recommendation
+    recent_interactions = await db.user_interactions.find({
+        "user_id": current_user.id,
+        "created_at": {"$gt": last_rec_time}
+    }).to_list(length=None)
+    
+    recent_votes = await db.votes.find({
+        "user_id": current_user.id,
+        "created_at": {"$gt": last_rec_time}
+    }).to_list(length=None)
+    
+    total_new_interactions = len(recent_interactions) + len(recent_votes)
+    
+    # Refresh if user has 10+ new interactions or it's been 7+ days
+    days_since_last = (datetime.utcnow() - last_rec_time).days
+    
+    refresh_needed = total_new_interactions >= 10 or days_since_last >= 7
+    
+    return {
+        "refresh_needed": refresh_needed,
+        "reason": f"{total_new_interactions} new interactions, {days_since_last} days old" if refresh_needed else "Recommendations are fresh",
+        "new_interactions": total_new_interactions,
+        "days_since_last": days_since_last
+    }
+
+@api_router.post("/recommendations/{rec_id}/action")
+async def recommendation_user_action(
+    rec_id: str,
+    action_data: dict,
+    current_user: User = Depends(get_current_user)
+):
+    """Record user action on algorithmic recommendation"""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    
+    valid_actions = ["added_to_watchlist", "dismissed", "not_interested", "viewed"]
+    action = action_data.get("action")
+    
+    if action not in valid_actions:
+        raise HTTPException(status_code=400, detail="Invalid action")
+    
+    # Update recommendation record
+    result = await db.algo_recommendations.update_one(
+        {"id": rec_id, "user_id": current_user.id},
+        {
+            "$set": {
+                "user_action": action,
+                "viewed": True if action == "viewed" else False
+            }
+        }
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Recommendation not found")
+    
+    # If user is not interested, also record as interaction and remove from watchlist
+    if action == "not_interested":
+        rec = await db.algo_recommendations.find_one({"id": rec_id})
+        if rec:
+            # Record interaction
+            interaction = UserContentInteraction(
+                user_id=current_user.id,
+                content_id=rec["content_id"],
+                interaction_type="not_interested"
+            )
+            await db.user_interactions.insert_one(interaction.dict())
+            
+            # Remove from algo watchlist
+            await db.user_watchlist.delete_one({
+                "user_id": current_user.id,
+                "content_id": rec["content_id"],
+                "watchlist_type": "algo_predicted"
+            })
+    
+    return {"success": True, "action_recorded": True}
     """Get user's detailed voting history"""
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
