@@ -101,3 +101,99 @@
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
+
+## user_problem_statement: "Consolidate AI/ML watchlist naming and access - There are two different names for the watchlist constructed using AI/ML algorithm: 'View My Recommendations' (accessed from home page) and 'AI Recommendations' (accessed from My Watchlists page). Since these are different algorithms, pick the more sophisticated (AdvancedRecommendationEngine) and consolidate interface."
+
+## backend:
+  - task: "Replace simple recommendations with AdvancedRecommendationEngine"
+    implemented: true
+    working: "NA"
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Updated /api/recommendations endpoint to use AdvancedRecommendationEngine instead of simple vote counting. Added fallback for users with insufficient data. Reduced threshold from 36 to 10 votes for better UX."
+
+  - task: "Update vote thresholds for recommendations"
+    implemented: true
+    working: "NA" 
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Updated stats endpoint and vote submission responses to use 10 vote threshold instead of 36 for recommendations availability."
+
+## frontend:
+  - task: "Rename 'View My Recommendations' to 'My Recommendations'"
+    implemented: true
+    working: "NA"
+    file: "frontend/src/App.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Updated button text from 'View My Recommendations' to 'My Recommendations' as requested."
+
+  - task: "Move 'My Watchlist' button from watchlists page to home page"
+    implemented: true
+    working: "NA"
+    file: "frontend/src/App.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Moved 'My Watchlist' button from header to main area next to 'My Recommendations' button. Only shows for authenticated users with recommendations available."
+
+  - task: "Remove dual watchlist interface confusion"
+    implemented: true
+    working: "NA"
+    file: "frontend/src/App.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Simplified watchlist page to only show user-defined watchlist. Removed 'AI Recommendations' tab and related logic. Updated title from 'My Watchlists' to 'My Watchlist'."
+
+  - task: "Simplify watchlist interface and remove AI recommendations tab"
+    implemented: true
+    working: "NA"
+    file: "frontend/src/App.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Removed watchlist type selector, AI recommendations handling, and simplified the interface to focus only on user-defined watchlist items."
+
+## metadata:
+  created_by: "main_agent"
+  version: "1.0"
+  test_sequence: 1
+  run_ui: false
+
+## test_plan:
+  current_focus:
+    - "Replace simple recommendations with AdvancedRecommendationEngine"
+    - "Rename 'View My Recommendations' to 'My Recommendations'"
+    - "Move 'My Watchlist' button from watchlists page to home page"
+    - "Remove dual watchlist interface confusion"
+  stuck_tasks: []
+  test_all: true
+  test_priority: "high_first"
+
+## agent_communication:
+  - agent: "main"
+    message: "Completed consolidation of AI/ML recommendation systems. Replaced simple vote-based recommendations with AdvancedRecommendationEngine, updated UI to have single 'My Recommendations' button, moved watchlist button to home page, and simplified interface. Ready for testing to verify all functionality works correctly."
