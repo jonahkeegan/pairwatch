@@ -1296,12 +1296,20 @@ async def content_interaction(
             user_votes = await db.votes.find({"user_id": current_user.id}).to_list(length=None)
             total_votes = len(user_votes)
             
+            print(f"DEBUG: Content interaction by user {current_user.id} with {total_votes} votes, interaction: {interaction_data['interaction_type']}")
+            
             if total_votes >= 10:
+                print(f"DEBUG: Triggering background recommendation refresh for user {current_user.id} due to content interaction")
                 # Trigger background recommendation refresh on content interactions
                 # since these are strong preference signals
-                asyncio.create_task(auto_generate_ai_recommendations(current_user.id))
+                task = asyncio.create_task(auto_generate_ai_recommendations(current_user.id))
+                print(f"DEBUG: Background task created for content interaction by user {current_user.id}")
+            else:
+                print(f"DEBUG: User {current_user.id} has insufficient votes ({total_votes}) for recommendation refresh")
         except Exception as e:
             print(f"Background recommendation generation error: {str(e)}")
+            import traceback
+            traceback.print_exc()
     
     return {"success": True, "interaction_recorded": True}
 
