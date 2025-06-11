@@ -632,6 +632,7 @@ function App() {
   const getButtonText = (contentId, interactionType) => {
     const currentInteraction = getInteractionForContent(contentId);
     const isActive = currentInteraction === interactionType;
+    const timer = passTimers[contentId];
     
     if (isActive) {
       switch (interactionType) {
@@ -640,6 +641,9 @@ function App() {
         case 'want_to_watch':
           return '📋 In Watchlist (click to undo)';
         case 'not_interested':
+          if (timer && timer.countdown > 0) {
+            return `🚫 Passed (${timer.countdown}s - click to undo)`;
+          }
           return '🚫 Passed (click to undo)';
         default:
           return '';
