@@ -149,7 +149,7 @@ function App() {
           console.error('Algo recommendations error:', error);
         }
       } else {
-        // For guests, use the old system (36 votes)
+        // For guests, use the same system (10 votes)
         if (statsResponse.data.recommendations_available && !showRecommendations) {
           const recResponse = await axios.get(`${API}/recommendations`, { params });
           setRecommendations(recResponse.data);
