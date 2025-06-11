@@ -1042,67 +1042,25 @@ function App() {
                         ✕
                       </button>
                     </div>
-                    {watchlistType === 'algo_predicted' && (
-                      <div className="absolute bottom-2 left-2">
-                        <div className="bg-green-600 bg-opacity-90 text-white px-3 py-1 rounded-full text-sm">
-                          AI Recommended
-                        </div>
-                      </div>
-                    )}
                   </div>
                   <div className="p-6 text-white">
                     <h3 className="text-xl font-bold mb-2">{item.content.title}</h3>
                     <p className="text-blue-200 mb-2">({item.content.year})</p>
                     
-                    {watchlistType === 'algo_predicted' && item.reasoning && (
-                      <p className="text-sm text-green-200 mb-4">{item.reasoning}</p>
-                    )}
-                    
                     <div className="flex justify-between items-center">
                       <div className="flex space-x-2">
-                        {watchlistType === 'algo_predicted' ? (
-                          // AI Recommendations - use special handler with undo modal
-                          <>
-                            <button
-                              onClick={() => handleRecommendationAction(item, 'watched')}
-                              disabled={removedRecommendations.has(item.watchlist_id)}
-                              className={`px-3 py-2 rounded text-sm transition-colors recommendation-action-btn ${
-                                removedRecommendations.has(item.watchlist_id) 
-                                  ? 'bg-gray-500 text-gray-300 cursor-not-allowed'
-                                  : 'bg-blue-600 hover:bg-blue-700 text-white'
-                              }`}
-                            >
-                              ✓ Watched
-                            </button>
-                            <button
-                              onClick={() => handleRecommendationAction(item, 'not_interested')}
-                              disabled={removedRecommendations.has(item.watchlist_id)}
-                              className={`px-3 py-2 rounded text-sm transition-colors recommendation-action-btn ${
-                                removedRecommendations.has(item.watchlist_id)
-                                  ? 'bg-gray-500 text-gray-300 cursor-not-allowed'
-                                  : 'bg-gray-600 hover:bg-gray-700 text-white'
-                              }`}
-                            >
-                              Not Interested
-                            </button>
-                          </>
-                        ) : (
-                          // User-defined watchlist - use regular handler
-                          <>
-                            <button
-                              onClick={() => handleContentInteraction(item.content.id, 'watched')}
-                              className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm transition-colors"
-                            >
-                              ✓ Watched
-                            </button>
-                            <button
-                              onClick={() => handleContentInteraction(item.content.id, 'not_interested')}
-                              className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded text-sm transition-colors"
-                            >
-                              Not Interested
-                            </button>
-                          </>
-                        )}
+                        <button
+                          onClick={() => handleContentInteraction(item.content.id, 'watched')}
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm transition-colors"
+                        >
+                          ✓ Watched
+                        </button>
+                        <button
+                          onClick={() => handleContentInteraction(item.content.id, 'not_interested')}
+                          className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded text-sm transition-colors"
+                        >
+                          Not Interested
+                        </button>
                       </div>
                       <div className="text-sm text-gray-300">
                         Priority: {item.priority || 1}/5
