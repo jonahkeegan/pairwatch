@@ -358,33 +358,39 @@ class MoviePreferenceAPITester:
         
         return False, {}
     
-    def test_generate_ml_recommendations(self):
-        """Test generating ML-powered recommendations"""
-        if not self.auth_token:
-            print("❌ No auth token available")
-            self.test_results.append({"name": "Generate ML Recommendations", "status": "SKIP", "details": "No auth token available"})
+    def test_get_content_user_status(self, content_id, use_auth=True):
+        """Test getting user's interaction status with content"""
+        params = {}
+        
+        if use_auth and self.auth_token:
+            # Use authenticated user
+            auth = True
+        elif self.session_id:
+            # Use guest session
+            params = {"session_id": self.session_id}
+            auth = False
+        else:
+            print("❌ No session ID or auth token available")
+            self.test_results.append({"name": "Get Content User Status", "status": "SKIP", "details": "No session ID or auth token available"})
             return False, {}
         
         success, response = self.run_test(
-            "Generate ML Recommendations",
-            "POST",
-            "recommendations/generate",
+            "Get Content User Status",
+            "GET",
+            f"content/{content_id}/user-status",
             200,
-            data={},
-            auth=True
+            auth=auth,
+            params=params
         )
         
         if success:
-            print(f"✅ ML recommendations generated:")
-            print(f"  Message: {response.get('message')}")
-            print(f"  Recommendations generated: {response.get('recommendations_generated', 0)}")
-            print(f"  User profile strength: {response.get('user_profile_strength', 0)}")
-            
-            if 'recommendation_categories' in response:
-                cats = response['recommendation_categories']
-                print(f"  High confidence: {cats.get('high_confidence', 0)}")
-                print(f"  Medium confidence: {cats.get('medium_confidence', 0)}")
-                print(f"  Exploratory: {cats.get('exploratory', 0)}")
+            print(f"✅ Content status retrieved:")
+            print(f"  Interactions: {response.get('interactions', [])}")
+            print(f"  In watchlist: {response.get('in_watchlist', False)}")
+            print(f"  Watchlist type: {response.get('watchlist_type')}")
+            print(f"  Has watched: {response.get('has_watched', False)}")
+            print(f"  Wants to watch: {response.get('wants_to_watch', False)}")
+            print(f"  Not interested: {response.get('not_interested', False)}")
             
             return True, response
         
