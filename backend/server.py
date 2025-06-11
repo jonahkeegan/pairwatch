@@ -946,18 +946,15 @@ async def get_recommendations(
 async def check_and_auto_refresh_recommendations(user_id: str) -> bool:
     """Check if recommendations need automatic refresh"""
     try:
-        print(f"DEBUG: Checking refresh need for user {user_id}")
         # Get last recommendation generation time
         latest_rec = await db.algo_recommendations.find({
             "user_id": user_id
         }).sort("created_at", -1).limit(1).to_list(length=1)
         
         if not latest_rec:
-            print(f"DEBUG: No existing recommendations for user {user_id}, need to generate")
             return True  # No recommendations exist, need to generate
         
         last_rec_time = latest_rec[0]["created_at"]
-        print(f"DEBUG: Last recommendation time for user {user_id}: {last_rec_time}")
         
         # Get recent interactions since last recommendation
         recent_interactions = await db.user_interactions.find({
