@@ -294,16 +294,111 @@
   filter: contrast(1.05) saturate(1.1);
 }
 
-/* Accessibility improvements for poster interactions */
-@media (prefers-reduced-motion: reduce) {
-  .poster-container img,
-  .poster-overlay,
-  .poster-badge,
-  .poster-zoom-btn,
-  .vote-card,
-  .recommendation-card {
-    transition: none !important;
-    animation: none !important;
+/* Recommendation removal animations */
+.recommendation-tile-exit {
+  animation: slideOutRight 0.3s ease-in-out forwards;
+}
+
+@keyframes slideOutRight {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+}
+
+.recommendation-tile-enter {
+  animation: slideInLeft 0.3s ease-in-out forwards;
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Undo modal animations */
+.undo-modal {
+  animation: modalBounceIn 0.3s ease-out;
+}
+
+@keyframes modalBounceIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.8) translateY(20px);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.05) translateY(-5px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Recommendation action feedback */
+.recommendation-action-feedback {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 20px;
+  font-size: 14px;
+  animation: feedbackFadeIn 0.3s ease-out;
+}
+
+@keyframes feedbackFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Enhanced button interactions for recommendations */
+.recommendation-action-btn {
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.recommendation-action-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.recommendation-action-btn:active {
+  transform: translateY(1px);
+}
+
+.recommendation-action-btn.clicked {
+  animation: buttonClickedFeedback 0.4s ease-out;
+}
+
+@keyframes buttonClickedFeedback {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(0.95);
+    background-color: rgba(34, 197, 94, 0.8);
+  }
+  100% {
+    transform: scale(1);
   }
 }
 
