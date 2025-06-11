@@ -1276,6 +1276,21 @@ async def content_interaction(
             )
             await db.user_watchlist.insert_one(watchlist_item.dict())
     
+    # Automatically trigger recommendation refresh for authenticated users
+    # when they interact with content (important signal for ML algorithm)
+    if current_user:
+        try:
+            # Get user's vote count to see if they qualify for recommendations
+            user_votes = await db.votes.find({"user_id": current_user.id}).to_list(length=None)
+            total_votes = len(user_votes)
+            
+            if total_votes >= 10:
+                # Trigger background recommendation refresh on content interactions
+                # since these are strong preference signals
+                asyncio.create_task(auto_generate_ai_recommendations(current_user.id))
+        except Exception as e:
+            print(f"Background recommendation generation error: {str(e)}")
+    
     return {"success": True, "interaction_recorded": True}
 
 @api_router.get("/watchlist/{watchlist_type}")
