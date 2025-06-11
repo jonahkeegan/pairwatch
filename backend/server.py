@@ -1282,6 +1282,9 @@ async def recommendation_user_action(
             })
     
     return {"success": True, "action_recorded": True}
+
+@api_router.get("/profile/voting-history")
+async def get_voting_history(current_user: User = Depends(get_current_user)):
     """Get user's detailed voting history"""
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
