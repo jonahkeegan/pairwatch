@@ -1405,7 +1405,7 @@ function App() {
             onClick={toggleRecommendations}
             className="mt-4 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 sm:px-4 rounded-lg transition-colors text-sm sm:text-base"
           >
-            View My Recommendations
+            My Recommendations
           </button>
         )}
       </div>
