@@ -25,6 +25,10 @@ function App() {
   const [contentInitialized, setContentInitialized] = useState(false);
   const [showPosterModal, setShowPosterModal] = useState(false);
   const [selectedPoster, setSelectedPoster] = useState(null);
+  const [userWatchlist, setUserWatchlist] = useState([]);
+  const [algoWatchlist, setAlgoWatchlist] = useState([]);
+  const [showWatchlist, setShowWatchlist] = useState(false);
+  const [watchlistType, setWatchlistType] = useState('user_defined'); // 'user_defined' or 'algo_predicted'
 
   // Auth form state
   const [authForm, setAuthForm] = useState({
