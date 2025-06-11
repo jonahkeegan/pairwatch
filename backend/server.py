@@ -841,21 +841,14 @@ async def submit_vote(
         # when user reaches thresholds or has significant new activity
         if total_votes >= 10:
             try:
-                print(f"DEBUG: User {current_user.id} has {total_votes} votes, checking for auto-generation...")
                 # Check if we should auto-generate recommendations
                 should_refresh = await check_and_auto_refresh_recommendations(current_user.id)
                 is_milestone = total_votes in [10, 15, 20, 25, 30, 40, 50]
                 
-                print(f"DEBUG: should_refresh={should_refresh}, is_milestone={is_milestone}")
-                
                 if should_refresh or is_milestone:
-                    print(f"DEBUG: Triggering background recommendation generation for user {current_user.id}")
                     # Run recommendation generation in background (fire and forget)
                     task = asyncio.create_task(auto_generate_ai_recommendations(current_user.id))
                     # Don't await the task - let it run in background
-                    print(f"DEBUG: Background task created for user {current_user.id}")
-                else:
-                    print(f"DEBUG: No refresh needed for user {current_user.id}")
             except Exception as e:
                 print(f"Background recommendation generation error: {str(e)}")
                 import traceback
