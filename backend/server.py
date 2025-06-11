@@ -1008,7 +1008,9 @@ async def get_stored_ai_recommendations(user_id: str) -> List[Recommendation]:
         return recommendations
         
     except Exception as e:
-        print(f"Error getting stored recommendations: {str(e)}")
+        print(f"Error getting stored recommendations for user {user_id}: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return []
 
 async def auto_generate_ai_recommendations(user_id: str):
