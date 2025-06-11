@@ -134,6 +134,9 @@
       - working: true
         agent: "testing"
         comment: "Verified that recommendations become available after 10 votes instead of 36. Tested with both authenticated users and guest sessions. The /api/stats endpoint correctly reports recommendations_available=true when total_votes >= 10 and votes_until_recommendations=0."
+      - working: true
+        agent: "testing"
+        comment: "Conducted additional testing of the stats endpoint to verify the vote countdown functionality. Created a dedicated test script that tests three scenarios: 1) New user with 0 votes shows votes_until_recommendations = 10, 2) User with 5 votes shows votes_until_recommendations = 5, and 3) User with 10+ votes shows votes_until_recommendations = 0 and recommendations_available = true. All scenarios passed for both authenticated users and guest sessions, confirming the new 10-vote threshold is working correctly."
 
 ## frontend:
   - task: "Rename 'View My Recommendations' to 'My Recommendations'"
