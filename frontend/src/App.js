@@ -1341,9 +1341,9 @@ function App() {
                       handleContentInteraction(currentPair.item1.id, 'watched');
                     }}
                     className={getButtonStyle(currentPair.item1.id, 'watched')}
-                    title="Mark as watched"
+                    title={getInteractionForContent(currentPair.item1.id) === 'watched' ? "Click to deselect" : "Mark as watched"}
                   >
-                    {getInteractionForContent(currentPair.item1.id) === 'watched' ? '✅ Watched' : '✓ Watched'}
+                    {getButtonText(currentPair.item1.id, 'watched')}
                   </button>
                   <button
                     onClick={(e) => {
@@ -1351,9 +1351,9 @@ function App() {
                       handleContentInteraction(currentPair.item1.id, 'want_to_watch');
                     }}
                     className={getButtonStyle(currentPair.item1.id, 'want_to_watch')}
-                    title="Add to watchlist"
+                    title={getInteractionForContent(currentPair.item1.id) === 'want_to_watch' ? "Click to deselect" : "Add to watchlist"}
                   >
-                    {getInteractionForContent(currentPair.item1.id) === 'want_to_watch' ? '📋 In Watchlist' : '📝 Want to Watch'}
+                    {getButtonText(currentPair.item1.id, 'want_to_watch')}
                   </button>
                   <button
                     onClick={(e) => {
@@ -1361,9 +1361,9 @@ function App() {
                       handleContentInteraction(currentPair.item1.id, 'not_interested');
                     }}
                     className={getButtonStyle(currentPair.item1.id, 'not_interested')}
-                    title="Not interested"
+                    title={getInteractionForContent(currentPair.item1.id) === 'not_interested' ? "Click to deselect" : "Not interested"}
                   >
-                    {getInteractionForContent(currentPair.item1.id) === 'not_interested' ? '🚫 Passed' : '❌ Pass'}
+                    {getButtonText(currentPair.item1.id, 'not_interested')}
                   </button>
                 </div>
               </div>
