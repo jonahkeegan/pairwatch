@@ -889,13 +889,23 @@ function App() {
                           <>
                             <button
                               onClick={() => handleRecommendationAction(item, 'watched')}
-                              className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm transition-colors"
+                              disabled={removedRecommendations.has(item.watchlist_id)}
+                              className={`px-3 py-2 rounded text-sm transition-colors recommendation-action-btn ${
+                                removedRecommendations.has(item.watchlist_id) 
+                                  ? 'bg-gray-500 text-gray-300 cursor-not-allowed'
+                                  : 'bg-blue-600 hover:bg-blue-700 text-white'
+                              }`}
                             >
                               ✓ Watched
                             </button>
                             <button
                               onClick={() => handleRecommendationAction(item, 'not_interested')}
-                              className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded text-sm transition-colors"
+                              disabled={removedRecommendations.has(item.watchlist_id)}
+                              className={`px-3 py-2 rounded text-sm transition-colors recommendation-action-btn ${
+                                removedRecommendations.has(item.watchlist_id)
+                                  ? 'bg-gray-500 text-gray-300 cursor-not-allowed'
+                                  : 'bg-gray-600 hover:bg-gray-700 text-white'
+                              }`}
                             >
                               Not Interested
                             </button>
