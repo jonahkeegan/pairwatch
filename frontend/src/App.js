@@ -556,12 +556,23 @@ function App() {
   };
 
   const handleRecommendationAction = async (item, action) => {
+    // Prevent rapid clicking
+    if (removedRecommendations.has(item.watchlist_id)) {
+      return; // Already removed
+    }
+    
     try {
       // Immediately remove from display
       setRemovedRecommendations(prev => new Set([...prev, item.watchlist_id]));
       
       // Record the interaction
       await handleContentInteraction(item.content.id, action);
+      
+      // Close any existing undo modal first
+      if (undoModal.show) {
+        setUndoModal({ show: false, item: null, action: null });
+        await new Promise(resolve => setTimeout(resolve, 100)); // Small delay
+      }
       
       // Show undo modal
       setUndoModal({
@@ -572,7 +583,13 @@ function App() {
       
       // Auto-hide undo modal after 5 seconds
       setTimeout(() => {
-        setUndoModal({ show: false, item: null, action: null });
+        setUndoModal(current => {
+          // Only close if this is still the current modal
+          if (current.item?.watchlist_id === item.watchlist_id && current.action === action) {
+            return { show: false, item: null, action: null };
+          }
+          return current;
+        });
       }, 5000);
       
     } catch (error) {
