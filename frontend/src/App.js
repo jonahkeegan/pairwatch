@@ -1401,12 +1401,22 @@ function App() {
         )}
         
         {userStats?.recommendations_available && (
-          <button
-            onClick={toggleRecommendations}
-            className="mt-4 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 sm:px-4 rounded-lg transition-colors text-sm sm:text-base"
-          >
-            My Recommendations
-          </button>
+          <div className="mt-4 flex justify-center space-x-4">
+            <button
+              onClick={toggleRecommendations}
+              className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 sm:px-4 rounded-lg transition-colors text-sm sm:text-base"
+            >
+              My Recommendations
+            </button>
+            {user && (
+              <button
+                onClick={toggleWatchlist}
+                className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-3 sm:px-4 rounded-lg transition-colors text-sm sm:text-base"
+              >
+                📝 My Watchlist
+              </button>
+            )}
+          </div>
         )}
       </div>
 
