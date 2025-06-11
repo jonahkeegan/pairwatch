@@ -660,6 +660,42 @@ function App() {
     );
   }
 
+  // Undo Modal for Recommendation Actions
+  if (undoModal.show && undoModal.item) {
+    const actionMessages = {
+      'watched': 'marked as watched',
+      'not_interested': 'marked as not interested'
+    };
+    
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={closeUndoModal}>
+        <div className="bg-white bg-opacity-10 backdrop-blur-lg rounded-xl p-6 max-w-md mx-auto" onClick={(e) => e.stopPropagation()}>
+          <div className="text-center text-white">
+            <div className="text-4xl mb-4">↩️</div>
+            <h3 className="text-xl font-bold mb-2">Action Completed</h3>
+            <p className="text-blue-200 mb-4">
+              "{undoModal.item.content.title}" has been {actionMessages[undoModal.action]} and removed from your recommendations.
+            </p>
+            <div className="flex space-x-4 justify-center">
+              <button
+                onClick={handleUndoRecommendationAction}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition-colors"
+              >
+                ↩️ Undo
+              </button>
+              <button
+                onClick={closeUndoModal}
+                className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded transition-colors"
+              >
+                Keep Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center">
