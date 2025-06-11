@@ -217,6 +217,18 @@
         agent: "testing"
         comment: "Created a comprehensive test that registers a new user and verifies the vote countdown functionality. Confirmed that for a new logged-in user, the initial countdown shows '10' under 'Until Recommendations'. After submitting 3 votes, verified the countdown decreases to '7'. After submitting 2 more votes (total 5), verified the countdown shows '5'. After submitting 5 more votes (total 10), verified the 'My Recommendations' button appears and the countdown shows '0'. The test passed successfully, confirming that logged-in users see the correct 10-vote threshold instead of 36."
 
+  - task: "Remove manual AI recommendation generation and implement automatic system"
+    implemented: true
+    working: "NA"
+    file: "backend/server.py, frontend/src/App.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Enhanced the recommendation system to automatically generate AI recommendations without requiring manual user action. Backend now includes: 1) Automatic refresh detection based on user activity (5+ new interactions or 3+ days), 2) Background recommendation generation triggered by votes and content interactions, 3) Stored recommendation caching with intelligent refresh logic, 4) Auto-generation at key voting milestones (10, 15, 20, 25, 30, 40, 50 votes). Frontend now includes: 1) Removed manual generation functions, 2) Added automatic polling every 2 minutes for logged-in users, 3) Auto-refresh after user interactions with 3-second delay, 4) Updated user messaging to reflect automatic system."
+
 ## metadata:
   created_by: "main_agent"
   version: "1.0"
