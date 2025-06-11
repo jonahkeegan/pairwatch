@@ -369,36 +369,65 @@
   }
 }
 
-/* Enhanced button interactions for recommendations */
-.recommendation-action-btn {
+/* Enhanced button interactions for voting tiles with deselection */
+.content-interaction-btn {
   transition: all 0.2s ease;
   position: relative;
   overflow: hidden;
+  user-select: none;
 }
 
-.recommendation-action-btn:hover {
+.content-interaction-btn:hover {
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
-.recommendation-action-btn:active {
+.content-interaction-btn:active {
   transform: translateY(1px);
 }
 
-.recommendation-action-btn.clicked {
-  animation: buttonClickedFeedback 0.4s ease-out;
+.content-interaction-btn.selected {
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3), 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
-@keyframes buttonClickedFeedback {
+.content-interaction-btn.selected:hover {
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5), 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+/* Selection feedback animation */
+.content-interaction-btn.toggle-animation {
+  animation: buttonToggle 0.3s ease-out;
+}
+
+@keyframes buttonToggle {
   0% {
     transform: scale(1);
   }
   50% {
-    transform: scale(0.95);
-    background-color: rgba(34, 197, 94, 0.8);
+    transform: scale(1.1);
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
   }
   100% {
     transform: scale(1);
+  }
+}
+
+/* Deselection hint styling */
+.deselection-hint {
+  font-size: 0.7rem;
+  opacity: 0.8;
+  font-weight: normal;
+}
+
+/* Mobile optimizations for button text */
+@media (max-width: 768px) {
+  .content-interaction-btn {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.75rem;
+  }
+  
+  .deselection-hint {
+    display: none; /* Hide detailed hint on mobile */
   }
 }
 
