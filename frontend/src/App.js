@@ -847,7 +847,12 @@ function App() {
             {/* Watchlist Content */}
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {currentWatchlist.filter(item => !removedRecommendations.has(item.watchlist_id)).map((item) => (
-                <div key={item.watchlist_id} className="bg-white bg-opacity-10 backdrop-blur-lg rounded-xl overflow-hidden">
+                <div 
+                  key={item.watchlist_id} 
+                  className={`bg-white bg-opacity-10 backdrop-blur-lg rounded-xl overflow-hidden transition-all duration-300 ${
+                    removedRecommendations.has(item.watchlist_id) ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
+                  }`}
+                >
                   <div className="relative">
                     {item.content.poster && (
                       <img 
