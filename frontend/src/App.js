@@ -416,6 +416,26 @@ function App() {
     }
 
     try {
+      // Check if this interaction is already selected - if so, deselect it
+      const currentInteraction = getInteractionForContent(contentId);
+      
+      if (currentInteraction === interactionType) {
+        // Deselect: remove the interaction
+        console.log(`Deselecting ${interactionType} for content ${contentId}`);
+        
+        // Remove from local state immediately for instant feedback
+        setContentInteractions(prev => {
+          const updated = { ...prev };
+          delete updated[contentId];
+          return updated;
+        });
+        
+        // TODO: Add backend endpoint to remove interaction
+        // For now, we'll just handle it locally
+        
+        return;
+      }
+
       const data = {
         content_id: contentId,
         interaction_type: interactionType,
