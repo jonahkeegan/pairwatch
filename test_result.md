@@ -241,7 +241,7 @@
   - agent: "testing"
     message: "Verified the vote countdown functionality in the stats endpoint. Tested three scenarios: 1) New user with 0 votes shows votes_until_recommendations = 10, 2) User with 5 votes shows votes_until_recommendations = 5, and 3) User with 10+ votes shows votes_until_recommendations = 0 and recommendations_available = true. All scenarios passed for both authenticated users and guest sessions, confirming the new 10-vote threshold is working correctly."
   - agent: "main" 
-    message: "Addressed user feedback about vote countdown displaying wrong threshold. Backend has been verified to correctly return 10-vote threshold in stats endpoint. User should see countdown starting at 10 votes instead of 36 when starting to vote."
+    message: "Addressed user feedback about vote countdown displaying wrong threshold. Fixed hardcoded 36-vote references in frontend code and updated to use 10-vote threshold. Frontend testing confirmed that logged-in users now see the correct countdown starting at 10 votes."
   - agent: "testing"
     message: "Specifically tested the stats endpoint for authenticated users as requested. Created a dedicated test that registers a new user, verifies initial stats show votes_until_recommendations = 10, submits votes in increments, and confirms the countdown decreases correctly. After 10 votes, verified votes_until_recommendations = 0 and recommendations_available = true. All tests passed successfully, confirming that new logged-in users see the correct 10-vote threshold instead of 36."
   - agent: "testing"
