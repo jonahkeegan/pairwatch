@@ -745,6 +745,7 @@ async def get_replacement_voting_pair(
         item2=ContentItem(**replacement_item),
         content_type=content_type
     )
+@api_router.get("/voting-pair")
 async def get_voting_pair(
     session_id: Optional[str] = Query(None),
     current_user: Optional[User] = Depends(get_current_user)
