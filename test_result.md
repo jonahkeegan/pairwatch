@@ -203,3 +203,5 @@
 ## agent_communication:
   - agent: "main"
     message: "Completed consolidation of AI/ML recommendation systems. Replaced simple vote-based recommendations with AdvancedRecommendationEngine, updated UI to have single 'My Recommendations' button, moved watchlist button to home page, and simplified interface. Ready for testing to verify all functionality works correctly."
+  - agent: "testing"
+    message: "Completed testing of backend recommendation system changes. The AdvancedRecommendationEngine is working correctly and provides personalized recommendations for users with 10+ votes. Verified that the vote threshold has been updated from 36 to 10 votes. Tested fallback functionality for users with insufficient voting data. All backend API endpoints are working as expected."
