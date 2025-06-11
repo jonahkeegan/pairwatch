@@ -151,8 +151,41 @@ function App() {
       
       const pairResponse = await axios.get(`${API}/voting-pair`, { params });
       setCurrentPair(pairResponse.data);
+      
+      // Load interaction status for both items in the pair
+      if (user || currentSessionId) {
+        await loadContentInteractions([pairResponse.data.item1.id, pairResponse.data.item2.id], currentSessionId);
+      }
     } catch (error) {
       console.error('Pair error:', error);
+    }
+  };
+
+  const loadContentInteractions = async (contentIds, sessionId = null) => {
+    try {
+      const interactions = {};
+      
+      for (const contentId of contentIds) {
+        const params = {};
+        if (!user && sessionId) {
+          params.session_id = sessionId;
+        }
+        
+        const response = await axios.get(`${API}/content/${contentId}/user-status`, { params });
+        
+        // Determine the primary interaction (prioritize in order: watched > want_to_watch > not_interested)
+        if (response.data.has_watched) {
+          interactions[contentId] = 'watched';
+        } else if (response.data.wants_to_watch) {
+          interactions[contentId] = 'want_to_watch';
+        } else if (response.data.not_interested) {
+          interactions[contentId] = 'not_interested';
+        }
+      }
+      
+      setContentInteractions(prev => ({ ...prev, ...interactions }));
+    } catch (error) {
+      console.error('Content interaction loading error:', error);
     }
   };
 
