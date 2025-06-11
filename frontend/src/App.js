@@ -369,13 +369,13 @@ function App() {
         data.session_id = sessionId;
       }
 
-      await axios.post(`${API}/content/interact`, data);
-      
-      // Update local interaction state for immediate feedback
+      // Update local interaction state immediately for instant feedback
       setContentInteractions(prev => ({
         ...prev,
         [contentId]: interactionType
       }));
+
+      await axios.post(`${API}/content/interact`, data);
       
       // Refresh watchlists if needed
       if (user) {
@@ -389,11 +389,18 @@ function App() {
         'not_interested': '❌ Noted - we won\'t recommend similar content'
       };
       
-      // You could add a toast notification here instead of console.log
       console.log(messages[interactionType]);
       
     } catch (error) {
       console.error('Content interaction error:', error);
+      
+      // Revert local state on error
+      setContentInteractions(prev => {
+        const updated = { ...prev };
+        delete updated[contentId];
+        return updated;
+      });
+      
       alert('Failed to record interaction');
     }
   };
