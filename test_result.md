@@ -107,15 +107,18 @@
 ## backend:
   - task: "Replace simple recommendations with AdvancedRecommendationEngine"
     implemented: true
-    working: "NA"
+    working: true
     file: "backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Updated /api/recommendations endpoint to use AdvancedRecommendationEngine instead of simple vote counting. Added fallback for users with insufficient data. Reduced threshold from 36 to 10 votes for better UX."
+      - working: true
+        agent: "testing"
+        comment: "Verified that the /api/recommendations endpoint now uses AdvancedRecommendationEngine. Tested with authenticated users and confirmed that recommendations show evidence of advanced algorithm with personalized reasoning. Also verified fallback functionality for users with insufficient data."
 
   - task: "Update vote thresholds for recommendations"
     implemented: true
