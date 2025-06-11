@@ -31,6 +31,7 @@ function App() {
   const [contentInteractions, setContentInteractions] = useState({}); // Track interactions per content ID
   const [removedRecommendations, setRemovedRecommendations] = useState(new Set()); // Track removed recommendation IDs
   const [undoModal, setUndoModal] = useState({ show: false, item: null, action: null }); // Undo modal state
+  const [passTimers, setPassTimers] = useState({}); // Track pass countdown timers per content ID
   const [watchlistType, setWatchlistType] = useState('user_defined'); // 'user_defined' or 'algo_predicted'
 
   // Auth form state
