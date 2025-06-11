@@ -912,121 +912,52 @@ class MoviePreferenceAPITester:
         
         return True
 
-    def run_all_tests(self):
-        """Run all API tests in sequence"""
-        print("\n🚀 Starting Movie Preference API Tests\n")
-        
-        # Test OMDB API integration directly
-        self.test_omdb_api_integration()
-        
-        # Initialize content
-        self.test_initialize_content()
-        
-        # Test 1: Guest Session Flow
-        print("\n📋 Testing Guest Session Flow")
-        
-        # Create session
-        session_success, _ = self.test_create_session()
-        if not session_success:
-            print("❌ Failed to create session, stopping tests")
-            return
-        
-        # Get session info
-        self.test_get_session()
-        
-        # Get a voting pair
-        pair_success, pair = self.test_get_voting_pair()
-        if not pair_success:
-            print("❌ Failed to get voting pair, stopping tests")
-            return
-        
-        # Submit a vote
-        self.test_submit_vote(
-            pair['item1']['id'], 
-            pair['item2']['id'],
-            pair['content_type']
+    def test_initialize_content(self):
+        """Test content initialization"""
+        success, response = self.run_test(
+            "Initialize Content",
+            "POST",
+            "initialize-content",
+            200,
+            data={}
         )
         
-        # Get user stats
-        self.test_get_stats()
-        
-        # Try to get recommendations (should fail with not enough votes)
-        self.test_get_recommendations()
-        
-        # Test 2: Authentication Flow
-        print("\n📋 Testing Authentication Flow")
-        self.test_auth_flow()
-        
-        # Test 3: Enhanced User Interaction Features
-        print("\n📋 Testing Enhanced User Interaction Features")
-        
-        # Get a voting pair to interact with
-        pair_success, pair = self.test_get_voting_pair(use_auth=True)
-        if not pair_success:
-            print("❌ Failed to get voting pair for interaction tests")
-            return
-        
-        # Test content interactions
-        content_id = pair['item1']['id']
-        
-        # Test marking as watched
-        self.test_content_interaction(content_id, "watched")
-        
-        # Test adding to watchlist
-        self.test_content_interaction(content_id, "want_to_watch")
-        
-        # Get content status
-        self.test_get_content_user_status(content_id)
-        
-        # Get user watchlist
-        watchlist_success, watchlist = self.test_get_watchlist("user_defined")
-        
-        if watchlist_success and watchlist.get('items'):
-            # Test updating watchlist priority
-            watchlist_id = watchlist['items'][0]['watchlist_id']
-            self.test_update_watchlist_priority(watchlist_id, 5)
-            
-            # Test removing from watchlist
-            self.test_remove_from_watchlist(watchlist_id)
-        
-        # Test 4: ML Recommendation Features
-        print("\n📋 Testing ML Recommendation Features")
-        
-        # Simulate voting to threshold with authenticated user
-        if self.auth_token:
-            # Check if we need to simulate more votes
-            _, stats = self.test_get_stats(use_auth=True)
-            
-            if stats.get('total_votes', 0) < 36:
-                print(f"\n🔄 Need to simulate more votes. Current: {stats.get('total_votes', 0)}, Required: 36")
-                self.simulate_voting_to_threshold(use_auth=True)
+        if success:
+            # Check if the response contains information about initialized content
+            if 'total_items' in response:
+                print(f"✅ Content initialized with {response['total_items']} items")
+                
+                # Check if we have the expanded content library (should be close to 284 items)
+                if response['total_items'] >= 200:
+                    print(f"✅ Expanded content library confirmed with {response['total_items']} items (expected ~284)")
+                    self.test_results.append({
+                        "name": "Expanded Content Library", 
+                        "status": "PASS", 
+                        "details": f"Found {response['total_items']} items (expected ~284)"
+                    })
+                else:
+                    print(f"⚠️ Content library seems smaller than expected: {response['total_items']} items (expected ~284)")
+                    self.test_results.append({
+                        "name": "Expanded Content Library", 
+                        "status": "WARNING", 
+                        "details": f"Found only {response['total_items']} items (expected ~284)"
+                    })
             else:
-                print(f"\n✅ Already have enough votes: {stats.get('total_votes', 0)}")
-            
-            # Generate ML recommendations
-            gen_success, gen_response = self.test_generate_ml_recommendations()
-            
-            # Check if recommendations need refresh
-            self.test_check_recommendations_refresh()
-            
-            # Get algo watchlist
-            algo_success, algo_watchlist = self.test_get_watchlist("algo_predicted")
-            
-            if algo_success and algo_watchlist.get('items'):
-                # Test recommendation user action
-                rec_id = algo_watchlist['items'][0]['watchlist_id']
-                self.test_recommendation_user_action(rec_id, "viewed")
+                print("⚠️ Response doesn't contain total_items count")
+                
+            # Check for movies and series counts if available
+            if 'movies' in response:
+                print(f"✅ Initialized {response['movies']} movies")
+            if 'series' in response:
+                print(f"✅ Initialized {response['series']} TV shows")
+                
+            # Check for any initialization errors
+            if 'errors' in response and response['errors']:
+                print(f"⚠️ Found {len(response['errors'])} initialization errors")
+                for error in response['errors'][:5]:  # Show first 5 errors
+                    print(f"  - {error}")
         
-        # Print results
-        print(f"\n📊 Tests passed: {self.tests_passed}/{self.tests_run}")
-        
-        # Print detailed results
-        print("\n📋 Test Results:")
-        for result in self.test_results:
-            status_icon = "✅" if result["status"] == "PASS" else "❌" if result["status"] == "FAIL" else "⚠️"
-            print(f"{status_icon} {result['name']}: {result['status']} - {result['details']}")
-        
-        return self.tests_passed == self.tests_run
+        return success, response
 
 def main():
     tester = MoviePreferenceAPITester()
