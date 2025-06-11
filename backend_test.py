@@ -705,7 +705,7 @@ class MoviePreferenceAPITester:
         return success, response
 
     def test_get_recommendations(self, use_auth=False):
-        """Test getting recommendations (requires 36+ votes)"""
+        """Test getting recommendations"""
         params = {}
         
         if use_auth and self.auth_token:
@@ -718,14 +718,6 @@ class MoviePreferenceAPITester:
         else:
             print("❌ No session ID or auth token available")
             self.test_results.append({"name": "Get Recommendations", "status": "SKIP", "details": "No session ID or auth token available"})
-            return False, {}
-        
-        # First check if we have enough votes
-        _, stats = self.test_get_stats(use_auth)
-        if not stats.get('recommendations_available', False):
-            print(f"⚠️ Not enough votes for recommendations. Current: {stats.get('total_votes', 0)}, Required: 36")
-            self.test_results.append({"name": "Get Recommendations", "status": "SKIP", 
-                                     "details": f"Not enough votes. Current: {stats.get('total_votes', 0)}, Required: 36"})
             return False, {}
         
         success, response = self.run_test(
