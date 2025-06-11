@@ -881,7 +881,189 @@ async def get_user_stats(
         "user_authenticated": current_user is not None
     }
 
-@api_router.get("/profile/voting-history")
+# Enhanced User Interaction Routes
+@api_router.post("/content/interact")
+async def content_interaction(
+    interaction_data: dict,
+    current_user: Optional[User] = Depends(get_current_user)
+):
+    """Record user interaction with content (watched, want_to_watch, not_interested)"""
+    required_fields = ["content_id", "interaction_type"]
+    for field in required_fields:
+        if field not in interaction_data:
+            raise HTTPException(status_code=400, detail=f"Missing field: {field}")
+    
+    # Validate interaction type
+    valid_interactions = ["watched", "want_to_watch", "not_interested"]
+    if interaction_data["interaction_type"] not in valid_interactions:
+        raise HTTPException(status_code=400, detail="Invalid interaction type")
+    
+    # Create interaction record
+    interaction = UserContentInteraction(
+        user_id=current_user.id if current_user else None,
+        session_id=interaction_data.get("session_id") if not current_user else None,
+        content_id=interaction_data["content_id"],
+        interaction_type=interaction_data["interaction_type"]
+    )
+    
+    await db.user_interactions.insert_one(interaction.dict())
+    
+    # If "want_to_watch", also add to user watchlist
+    if interaction_data["interaction_type"] == "want_to_watch" and current_user:
+        # Check if already in watchlist
+        existing = await db.user_watchlist.find_one({
+            "user_id": current_user.id,
+            "content_id": interaction_data["content_id"],
+            "watchlist_type": "user_defined"
+        })
+        
+        if not existing:
+            watchlist_item = UserWatchlist(
+                user_id=current_user.id,
+                content_id=interaction_data["content_id"],
+                priority=interaction_data.get("priority", 1),
+                watchlist_type="user_defined"
+            )
+            await db.user_watchlist.insert_one(watchlist_item.dict())
+    
+    return {"success": True, "interaction_recorded": True}
+
+@api_router.get("/watchlist/{watchlist_type}")
+async def get_watchlist(
+    watchlist_type: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Get user's watchlist (user_defined or algo_predicted)"""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    
+    if watchlist_type not in ["user_defined", "algo_predicted"]:
+        raise HTTPException(status_code=400, detail="Invalid watchlist type")
+    
+    # Get watchlist items
+    watchlist_items = await db.user_watchlist.find({
+        "user_id": current_user.id,
+        "watchlist_type": watchlist_type
+    }).sort("added_at", -1).to_list(length=100)
+    
+    # Get content details for each item
+    detailed_watchlist = []
+    for item in watchlist_items:
+        content = await db.content.find_one({"id": item["content_id"]})
+        if content:
+            detailed_item = {
+                "watchlist_id": item["id"],
+                "content": ContentItem(**content),
+                "added_at": item["added_at"],
+                "priority": item.get("priority", 1)
+            }
+            
+            # For algo_predicted, add recommendation details
+            if watchlist_type == "algo_predicted":
+                algo_rec = await db.algo_recommendations.find_one({
+                    "user_id": current_user.id,
+                    "content_id": item["content_id"]
+                })
+                if algo_rec:
+                    detailed_item.update({
+                        "recommendation_score": algo_rec["recommendation_score"],
+                        "reasoning": algo_rec["reasoning"],
+                        "confidence": algo_rec["confidence"]
+                    })
+            
+            detailed_watchlist.append(detailed_item)
+    
+    return {
+        "watchlist_type": watchlist_type,
+        "items": detailed_watchlist,
+        "total_count": len(detailed_watchlist)
+    }
+
+@api_router.delete("/watchlist/{watchlist_id}")
+async def remove_from_watchlist(
+    watchlist_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Remove item from watchlist"""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    
+    result = await db.user_watchlist.delete_one({
+        "id": watchlist_id,
+        "user_id": current_user.id
+    })
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Watchlist item not found")
+    
+    return {"success": True, "removed": True}
+
+@api_router.put("/watchlist/{watchlist_id}/priority")
+async def update_watchlist_priority(
+    watchlist_id: str,
+    priority_data: dict,
+    current_user: User = Depends(get_current_user)
+):
+    """Update watchlist item priority"""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    
+    if "priority" not in priority_data or not isinstance(priority_data["priority"], int):
+        raise HTTPException(status_code=400, detail="Valid priority (1-5) required")
+    
+    priority = max(1, min(5, priority_data["priority"]))  # Clamp to 1-5
+    
+    result = await db.user_watchlist.update_one(
+        {"id": watchlist_id, "user_id": current_user.id},
+        {"$set": {"priority": priority}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Watchlist item not found")
+    
+    return {"success": True, "priority_updated": True}
+
+@api_router.get("/content/{content_id}/user-status")
+async def get_content_user_status(
+    content_id: str,
+    current_user: Optional[User] = Depends(get_current_user),
+    session_id: Optional[str] = Query(None)
+):
+    """Get user's interaction status with specific content"""
+    user_identifier = current_user.id if current_user else session_id
+    
+    if not user_identifier:
+        return {"interactions": [], "in_watchlist": False}
+    
+    # Get user interactions
+    query = {"content_id": content_id}
+    if current_user:
+        query["user_id"] = current_user.id
+    else:
+        query["session_id"] = session_id
+    
+    interactions = await db.user_interactions.find(query).to_list(length=None)
+    
+    # Check if in watchlist (only for authenticated users)
+    in_watchlist = False
+    watchlist_type = None
+    if current_user:
+        watchlist_item = await db.user_watchlist.find_one({
+            "user_id": current_user.id,
+            "content_id": content_id
+        })
+        if watchlist_item:
+            in_watchlist = True
+            watchlist_type = watchlist_item["watchlist_type"]
+    
+    return {
+        "interactions": [i["interaction_type"] for i in interactions],
+        "in_watchlist": in_watchlist,
+        "watchlist_type": watchlist_type,
+        "has_watched": "watched" in [i["interaction_type"] for i in interactions],
+        "wants_to_watch": "want_to_watch" in [i["interaction_type"] for i in interactions],
+        "not_interested": "not_interested" in [i["interaction_type"] for i in interactions]
+    }
 async def get_voting_history(current_user: User = Depends(get_current_user)):
     """Get user's detailed voting history"""
     if not current_user:
