@@ -8,7 +8,7 @@ from datetime import datetime
 import json
 
 class AIRecommendationTester:
-    def __init__(self, base_url="https://c62d4176-fc83-406e-a031-ac397638707a.preview.emergentagent.com/api"):
+    def __init__(self, base_url="https://bc399ce5-d614-4d4b-a2e3-afb7b5993410.preview.emergentagent.com/api"):
         self.base_url = base_url
         self.session_id = None
         self.auth_token = None
