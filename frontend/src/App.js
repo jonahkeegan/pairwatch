@@ -355,7 +355,38 @@ function App() {
     }
   };
 
-  const toggleRecommendations = () => {
+  const toggleRecommendations = async () => {
+    if (!showRecommendations) {
+      // Load recommendations when showing
+      if (user) {
+        // For authenticated users, load from ML watchlist
+        try {
+          const algoWatchlistResponse = await axios.get(`${API}/watchlist/algo_predicted`);
+          if (algoWatchlistResponse.data.items && algoWatchlistResponse.data.items.length > 0) {
+            setRecommendations(algoWatchlistResponse.data.items);
+          } else {
+            // No ML recommendations yet, suggest generating them
+            alert('No ML recommendations yet. Use the "🔮 Generate New Recommendations" button in your watchlist to create personalized suggestions!');
+            return;
+          }
+        } catch (error) {
+          console.error('Failed to load ML recommendations:', error);
+          alert('Failed to load recommendations. Please try again.');
+          return;
+        }
+      } else {
+        // For guests, use original recommendation system
+        try {
+          const params = { session_id: sessionId };
+          const recResponse = await axios.get(`${API}/recommendations`, { params });
+          setRecommendations(recResponse.data);
+        } catch (error) {
+          console.error('Failed to load recommendations:', error);
+          alert('Need at least 36 votes for recommendations!');
+          return;
+        }
+      }
+    }
     setShowRecommendations(!showRecommendations);
   };
 
