@@ -1407,5 +1407,66 @@ def main():
     success = tester.run_recommendation_tests()
     return 0 if success else 1
 
+def test_vote_countdown():
+    """Test the vote countdown functionality with the new 10-vote threshold"""
+    tester = MoviePreferenceAPITester()
+    print("\n🔍 Testing Vote Countdown Functionality with 10-vote threshold...")
+    
+    # Scenario 1: New user with 0 votes
+    print("\n📋 Scenario 1: New user with 0 votes")
+    # Register a new user
+    tester.test_user_registration()
+    
+    # Get stats for new user (0 votes)
+    success, stats = tester.test_get_stats(use_auth=True)
+    if success:
+        if stats.get('total_votes') == 0 and stats.get('votes_until_recommendations') == 10:
+            print("✅ PASS: New user with 0 votes shows votes_until_recommendations = 10")
+        else:
+            print(f"❌ FAIL: New user with 0 votes shows votes_until_recommendations = {stats.get('votes_until_recommendations')}, expected 10")
+    
+    # Scenario 2: User with 5 votes
+    print("\n📋 Scenario 2: User with 5 votes")
+    # Simulate 5 votes
+    tester.simulate_voting_to_threshold(use_auth=True, target_votes=5)
+    
+    # Get stats for user with 5 votes
+    success, stats = tester.test_get_stats(use_auth=True)
+    if success:
+        if stats.get('total_votes') == 5 and stats.get('votes_until_recommendations') == 5:
+            print("✅ PASS: User with 5 votes shows votes_until_recommendations = 5")
+        else:
+            print(f"❌ FAIL: User with 5 votes shows votes_until_recommendations = {stats.get('votes_until_recommendations')}, expected 5")
+    
+    # Scenario 3: User with 10+ votes
+    print("\n📋 Scenario 3: User with 10+ votes")
+    # Simulate 5 more votes to reach 10
+    tester.simulate_voting_to_threshold(use_auth=True, target_votes=10)
+    
+    # Get stats for user with 10 votes
+    success, stats = tester.test_get_stats(use_auth=True)
+    if success:
+        if stats.get('total_votes') >= 10 and stats.get('votes_until_recommendations') == 0 and stats.get('recommendations_available') == True:
+            print("✅ PASS: User with 10+ votes shows votes_until_recommendations = 0 and recommendations_available = true")
+        else:
+            print(f"❌ FAIL: User with 10+ votes shows votes_until_recommendations = {stats.get('votes_until_recommendations')}, expected 0")
+            print(f"❌ FAIL: User with 10+ votes shows recommendations_available = {stats.get('recommendations_available')}, expected true")
+    
+    # Test with guest session as well
+    print("\n📋 Testing with guest session")
+    # Create a new session
+    tester.auth_token = None  # Clear auth token to use guest session
+    tester.test_create_session()
+    
+    # Scenario 1: New guest with 0 votes
+    success, stats = tester.test_get_stats(use_auth=False)
+    if success:
+        if stats.get('total_votes') == 0 and stats.get('votes_until_recommendations') == 10:
+            print("✅ PASS: New guest with 0 votes shows votes_until_recommendations = 10")
+        else:
+            print(f"❌ FAIL: New guest with 0 votes shows votes_until_recommendations = {stats.get('votes_until_recommendations')}, expected 10")
+
 if __name__ == "__main__":
+    # Uncomment the line below to run the vote countdown test
+    # test_vote_countdown()
     sys.exit(main())
