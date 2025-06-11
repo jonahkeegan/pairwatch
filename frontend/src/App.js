@@ -1007,34 +1007,12 @@ function App() {
               </button>
             </div>
             
-            {/* Watchlist Type Selector */}
-            <div className="flex space-x-4 mb-8">
-              <button
-                onClick={() => setWatchlistType('user_defined')}
-                className={`px-6 py-3 rounded-lg font-semibold transition-colors ${
-                  watchlistType === 'user_defined'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-white bg-opacity-20 text-blue-200 hover:bg-opacity-30'
-                }`}
-              >
-                My Watchlist ({userWatchlist.length})
-              </button>
-              <button
-                onClick={() => setWatchlistType('algo_predicted')}
-                className={`px-6 py-3 rounded-lg font-semibold transition-colors ${
-                  watchlistType === 'algo_predicted'
-                    ? 'bg-green-600 text-white'
-                    : 'bg-white bg-opacity-20 text-green-200 hover:bg-opacity-30'
-                }`}
-              >
-                AI Recommendations ({algoWatchlist.length})
-              </button>
-              <button
-                onClick={generateRecommendations}
-                className="px-6 py-3 rounded-lg font-semibold bg-purple-600 text-white hover:bg-purple-700 transition-colors"
-              >
-                🔮 Generate New Recommendations
-              </button>
+            {/* Watchlist Header */}
+            <div className="flex justify-between items-center mb-8">
+              <div>
+                <h2 className="text-2xl font-bold text-white mb-2">My Watchlist ({userWatchlist.length} items)</h2>
+                <p className="text-blue-200">Movies and shows you want to watch</p>
+              </div>
             </div>
             
             {/* Watchlist Content */}
