@@ -369,7 +369,7 @@ function App() {
             setRecommendations(algoWatchlistResponse.data.items);
           } else {
             // No ML recommendations yet, suggest generating them
-            alert('No ML recommendations yet. Use the "🔮 Generate New Recommendations" button in your watchlist to create personalized suggestions!');
+            alert('No AI recommendations available yet. Keep voting and interacting with content - recommendations will be automatically generated based on your preferences!');
             return;
           }
         } catch (error) {
