@@ -1025,6 +1025,110 @@ class MoviePreferenceAPITester:
         
         return True
 
+    def test_voting_pair_replacement(self, use_auth=False):
+        """Test the voting pair replacement API endpoint"""
+        print("\n🔍 Testing Voting Pair Replacement API...")
+        
+        # First, get a voting pair
+        pair_success, pair = self.test_get_voting_pair(use_auth=use_auth)
+        if not pair_success:
+            print("❌ Failed to get initial voting pair")
+            self.test_results.append({"name": "Voting Pair Replacement", "status": "FAIL", "details": "Failed to get initial voting pair"})
+            return False, {}
+        
+        # Choose one content ID to keep
+        remaining_content_id = pair['item1']['id']
+        remaining_content_title = pair['item1']['title']
+        replaced_content_id = pair['item2']['id']
+        replaced_content_title = pair['item2']['title']
+        content_type = pair['content_type']
+        
+        print(f"Testing replacement with:")
+        print(f"  Remaining content: {remaining_content_title} (ID: {remaining_content_id})")
+        print(f"  Content to replace: {replaced_content_title} (ID: {replaced_content_id})")
+        print(f"  Content type: {content_type}")
+        
+        # Set up parameters
+        params = {}
+        if use_auth and self.auth_token:
+            auth = True
+        elif self.session_id:
+            params = {"session_id": self.session_id}
+            auth = False
+        else:
+            print("❌ No session ID or auth token available")
+            self.test_results.append({"name": "Voting Pair Replacement", "status": "SKIP", "details": "No session ID or auth token available"})
+            return False, {}
+        
+        # Call the replacement endpoint
+        success, response = self.run_test(
+            "Voting Pair Replacement",
+            "GET",
+            f"voting-pair-replacement/{remaining_content_id}",
+            200,
+            auth=auth,
+            params=params
+        )
+        
+        if not success:
+            print("❌ Failed to get replacement voting pair")
+            return False, {}
+        
+        # Verify the response contains a valid voting pair
+        if 'item1' not in response or 'item2' not in response:
+            print("❌ Response doesn't contain a valid voting pair")
+            self.test_results.append({"name": "Voting Pair Replacement - Response Format", "status": "FAIL", "details": "Response doesn't contain a valid voting pair"})
+            return False, response
+        
+        # Verify that one of the items is the remaining content
+        remaining_content_found = False
+        new_content_id = None
+        
+        if response['item1']['id'] == remaining_content_id:
+            remaining_content_found = True
+            new_content_id = response['item2']['id']
+            new_content_title = response['item2']['title']
+        elif response['item2']['id'] == remaining_content_id:
+            remaining_content_found = True
+            new_content_id = response['item1']['id']
+            new_content_title = response['item1']['title']
+        
+        if not remaining_content_found:
+            print("❌ Remaining content not found in replacement pair")
+            self.test_results.append({"name": "Voting Pair Replacement - Content Preservation", "status": "FAIL", "details": "Remaining content not found in replacement pair"})
+            return False, response
+        
+        # Verify that the new content is different from the replaced content
+        if new_content_id == replaced_content_id:
+            print("❌ New content is the same as replaced content")
+            self.test_results.append({"name": "Voting Pair Replacement - New Content", "status": "FAIL", "details": "New content is the same as replaced content"})
+            return False, response
+        
+        # Verify that both items are of the same content type
+        if response['item1']['content_type'] != response['item2']['content_type']:
+            print("❌ Items in replacement pair have different content types")
+            self.test_results.append({"name": "Voting Pair Replacement - Content Type", "status": "FAIL", "details": "Items in replacement pair have different content types"})
+            return False, response
+        
+        # Verify that the content type matches the original pair
+        if response['content_type'] != content_type:
+            print("❌ Replacement pair has different content type than original pair")
+            self.test_results.append({"name": "Voting Pair Replacement - Content Type Preservation", "status": "FAIL", "details": "Replacement pair has different content type than original pair"})
+            return False, response
+        
+        print("✅ Voting pair replacement successful:")
+        print(f"  Remaining content: {remaining_content_title} (ID: {remaining_content_id})")
+        print(f"  New content: {new_content_title} (ID: {new_content_id})")
+        print(f"  Content type: {response['content_type']}")
+        
+        self.test_results.append({
+            "name": "Voting Pair Replacement", 
+            "status": "PASS", 
+            "details": f"Successfully replaced content while preserving {remaining_content_title}"
+        })
+        
+        return True, response
+
     def run_all_tests(self):
         """Run all API tests in sequence"""
         print("\n🚀 Starting Movie Preference API Tests\n")
@@ -1078,6 +1182,10 @@ class MoviePreferenceAPITester:
         
         # Test deselection functionality (new feature)
         self.test_deselection_functionality()
+        
+        # Test dynamic tile replacement functionality (new feature)
+        print("\n📋 Testing Dynamic Tile Replacement Functionality")
+        self.test_voting_pair_replacement(use_auth=True if self.auth_token else False)
         
         # Get a voting pair to interact with
         pair_success, pair = self.test_get_voting_pair(use_auth=True)
