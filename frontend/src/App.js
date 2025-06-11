@@ -555,6 +555,67 @@ function App() {
     setShowWatchlist(!showWatchlist);
   };
 
+  const handleRecommendationAction = async (item, action) => {
+    try {
+      // Immediately remove from display
+      setRemovedRecommendations(prev => new Set([...prev, item.watchlist_id]));
+      
+      // Record the interaction
+      await handleContentInteraction(item.content.id, action);
+      
+      // Show undo modal
+      setUndoModal({
+        show: true,
+        item: item,
+        action: action
+      });
+      
+      // Auto-hide undo modal after 5 seconds
+      setTimeout(() => {
+        setUndoModal({ show: false, item: null, action: null });
+      }, 5000);
+      
+    } catch (error) {
+      console.error('Recommendation action error:', error);
+      // Revert removal on error
+      setRemovedRecommendations(prev => {
+        const updated = new Set(prev);
+        updated.delete(item.watchlist_id);
+        return updated;
+      });
+    }
+  };
+
+  const handleUndoRecommendationAction = async () => {
+    if (!undoModal.item) return;
+    
+    try {
+      // Remove the interaction from backend
+      // Note: We'll need to implement this endpoint or handle it differently
+      console.log('Undoing action for:', undoModal.item.content.title);
+      
+      // Restore the item to display
+      setRemovedRecommendations(prev => {
+        const updated = new Set(prev);
+        updated.delete(undoModal.item.watchlist_id);
+        return updated;
+      });
+      
+      // Close modal
+      setUndoModal({ show: false, item: null, action: null });
+      
+      // Reload watchlists to ensure consistency
+      await loadWatchlists();
+      
+    } catch (error) {
+      console.error('Undo action error:', error);
+    }
+  };
+
+  const closeUndoModal = () => {
+    setUndoModal({ show: false, item: null, action: null });
+  };
+
   // Poster Modal
   if (showPosterModal && selectedPoster) {
     return (
