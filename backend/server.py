@@ -1024,11 +1024,15 @@ async def get_stored_ai_recommendations(user_id: str) -> List[Recommendation]:
 async def auto_generate_ai_recommendations(user_id: str):
     """Automatically generate and store AI recommendations"""
     try:
+        print(f"DEBUG: Starting auto-generation for user {user_id}")
         # Get all content for feature extraction
         all_content = await db.content.find().to_list(length=None)
         
         if not all_content:
+            print(f"DEBUG: No content available for recommendations for user {user_id}")
             return
+        
+        print(f"DEBUG: Found {len(all_content)} content items for user {user_id}")
         
         # Extract content features
         content_df = recommendation_engine.extract_content_features(all_content)
@@ -1038,6 +1042,8 @@ async def auto_generate_ai_recommendations(user_id: str):
         
         # Also include vote data as interactions
         user_votes = await db.votes.find({"user_id": user_id}).to_list(length=None)
+        
+        print(f"DEBUG: User {user_id} has {len(user_interactions)} interactions and {len(user_votes)} votes")
         
         # Convert votes to interactions
         for vote in user_votes:
