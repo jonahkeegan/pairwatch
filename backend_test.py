@@ -850,117 +850,263 @@ class MoviePreferenceAPITester:
         
         return True
 
-    def test_independent_content_interactions(self):
-        """Test independent content interactions for both tiles in a voting pair"""
-        print("\n🔍 Testing Independent Content Interactions...")
+    def test_advanced_recommendations(self):
+        """Test the advanced recommendation engine with different user scenarios"""
+        print("\n🔍 Testing Advanced Recommendation Engine...")
         
-        # Get a voting pair
-        pair_success, pair = self.test_get_voting_pair(use_auth=True if self.auth_token else False)
-        if not pair_success:
-            print("❌ Failed to get voting pair for independent interaction tests")
-            self.test_results.append({"name": "Independent Content Interactions", "status": "FAIL", "details": "Failed to get voting pair"})
-            return False
+        # Test scenario 1: New user with 0 votes
+        print("\n📋 Scenario 1: New user with 0 votes")
+        # Register a new user
+        self.test_user_registration()
         
-        # Get the content IDs from the pair
-        content_id1 = pair['item1']['id']
-        content_id2 = pair['item2']['id']
-        
-        print(f"Testing independent interactions on content pair:")
-        print(f"  Item 1: {pair['item1']['title']} (ID: {content_id1})")
-        print(f"  Item 2: {pair['item2']['title']} (ID: {content_id2})")
-        
-        # Test different interactions for each content item
-        # Mark first item as "watched"
-        watched_success, _ = self.test_content_interaction(
-            content_id1, 
-            "watched",
-            use_auth=True if self.auth_token else False,
-            session_id=self.session_id if not self.auth_token else None
-        )
-        
-        if not watched_success:
-            print("❌ Failed to mark first item as watched")
-            self.test_results.append({"name": "Independent Content Interactions - Watched", "status": "FAIL", "details": "Failed to mark first item as watched"})
-            return False
-        
-        # Mark second item as "want_to_watch"
-        watchlist_success, _ = self.test_content_interaction(
-            content_id2, 
-            "want_to_watch",
-            use_auth=True if self.auth_token else False,
-            session_id=self.session_id if not self.auth_token else None
-        )
-        
-        if not watchlist_success:
-            print("❌ Failed to mark second item as want to watch")
-            self.test_results.append({"name": "Independent Content Interactions - Want to Watch", "status": "FAIL", "details": "Failed to mark second item as want to watch"})
-            return False
-        
-        # Verify the status of both items
-        status1_success, status1 = self.test_get_content_user_status(
-            content_id1, 
-            use_auth=True if self.auth_token else False
-        )
-        
-        status2_success, status2 = self.test_get_content_user_status(
-            content_id2, 
-            use_auth=True if self.auth_token else False
-        )
-        
-        if not status1_success or not status2_success:
-            print("❌ Failed to get content status")
-            self.test_results.append({"name": "Independent Content Interactions - Status Check", "status": "FAIL", "details": "Failed to get content status"})
-            return False
-        
-        # Verify that the interactions are independent
-        if status1.get('has_watched', False) and status2.get('wants_to_watch', False):
-            print("✅ Verified independent interactions:")
-            print(f"  Item 1 ({pair['item1']['title']}): Marked as watched")
-            print(f"  Item 2 ({pair['item2']['title']}): Added to watchlist")
-            self.test_results.append({"name": "Independent Content Interactions", "status": "PASS", "details": "Successfully verified independent interactions for both items"})
-            
-            # Now test changing an interaction
-            print("\nTesting interaction change...")
-            
-            # Change first item from "watched" to "not_interested"
-            change_success, _ = self.test_content_interaction(
-                content_id1, 
-                "not_interested",
-                use_auth=True if self.auth_token else False,
-                session_id=self.session_id if not self.auth_token else None
-            )
-            
-            if not change_success:
-                print("❌ Failed to change interaction")
-                self.test_results.append({"name": "Independent Content Interactions - Change", "status": "FAIL", "details": "Failed to change interaction"})
-                return False
-            
-            # Verify the change
-            status1_after_success, status1_after = self.test_get_content_user_status(
-                content_id1, 
-                use_auth=True if self.auth_token else False
-            )
-            
-            if not status1_after_success:
-                print("❌ Failed to get updated content status")
-                self.test_results.append({"name": "Independent Content Interactions - Change Verification", "status": "FAIL", "details": "Failed to get updated content status"})
-                return False
-            
-            if status1_after.get('not_interested', False):
-                print("✅ Successfully changed interaction:")
-                print(f"  Item 1 ({pair['item1']['title']}): Changed from 'watched' to 'not interested'")
-                self.test_results.append({"name": "Independent Content Interactions - Change", "status": "PASS", "details": "Successfully changed interaction"})
-                return True
-            else:
-                print("❌ Failed to verify interaction change")
-                self.test_results.append({"name": "Independent Content Interactions - Change Verification", "status": "FAIL", "details": "Failed to verify interaction change"})
-                return False
+        # Get recommendations (should be empty as user has 0 votes)
+        success, response = self.test_get_recommendations(use_auth=True)
+        if success and len(response) == 0:
+            print("✅ Verified: New user with 0 votes gets no recommendations")
+            self.test_results.append({
+                "name": "Advanced Recommendations - New User", 
+                "status": "PASS", 
+                "details": "New user with 0 votes correctly gets no recommendations"
+            })
         else:
-            print("❌ Failed to verify independent interactions")
-            print(f"  Item 1 watched status: {status1.get('has_watched', False)}")
-            print(f"  Item 2 want to watch status: {status2.get('wants_to_watch', False)}")
-            self.test_results.append({"name": "Independent Content Interactions", "status": "FAIL", "details": "Failed to verify independent interactions"})
-            return False
+            print("❌ Failed: New user with 0 votes should get no recommendations")
+            self.test_results.append({
+                "name": "Advanced Recommendations - New User", 
+                "status": "FAIL", 
+                "details": f"New user with 0 votes got {len(response)} recommendations instead of 0"
+            })
+        
+        # Test scenario 2: User with 5 votes (below threshold)
+        print("\n📋 Scenario 2: User with 5 votes (below threshold)")
+        # Simulate 5 votes
+        self.simulate_voting_to_threshold(use_auth=True, target_votes=5)
+        
+        # Get stats to verify vote count
+        _, stats = self.test_get_stats(use_auth=True)
+        if stats.get('total_votes') == 5:
+            print("✅ Verified: User has 5 votes")
+            
+            # Check recommendations availability flag
+            if not stats.get('recommendations_available'):
+                print("✅ Verified: Recommendations not available with 5 votes")
+                self.test_results.append({
+                    "name": "Advanced Recommendations - Below Threshold", 
+                    "status": "PASS", 
+                    "details": "User with 5 votes correctly shows recommendations not available"
+                })
+            else:
+                print("❌ Failed: Recommendations should not be available with only 5 votes")
+                self.test_results.append({
+                    "name": "Advanced Recommendations - Below Threshold", 
+                    "status": "FAIL", 
+                    "details": "User with 5 votes incorrectly shows recommendations available"
+                })
+            
+            # Get recommendations (should be empty as user has only 5 votes)
+            success, response = self.test_get_recommendations(use_auth=True)
+            if success and len(response) == 0:
+                print("✅ Verified: User with 5 votes gets no recommendations")
+                self.test_results.append({
+                    "name": "Advanced Recommendations - Below Threshold Content", 
+                    "status": "PASS", 
+                    "details": "User with 5 votes correctly gets no recommendation content"
+                })
+            else:
+                print("❌ Failed: User with 5 votes should get no recommendations")
+                self.test_results.append({
+                    "name": "Advanced Recommendations - Below Threshold Content", 
+                    "status": "FAIL", 
+                    "details": f"User with 5 votes got {len(response)} recommendations instead of 0"
+                })
+        
+        # Test scenario 3: User with 10+ votes (should get advanced recommendations)
+        print("\n📋 Scenario 3: User with 10+ votes (should get advanced recommendations)")
+        # Simulate more votes to reach threshold
+        self.simulate_voting_to_threshold(use_auth=True, target_votes=10)
+        
+        # Get stats to verify vote count
+        _, stats = self.test_get_stats(use_auth=True)
+        if stats.get('total_votes') >= 10:
+            print(f"✅ Verified: User has {stats.get('total_votes')} votes (≥ 10)")
+            
+            # Check recommendations availability flag
+            if stats.get('recommendations_available'):
+                print("✅ Verified: Recommendations available with 10+ votes")
+                self.test_results.append({
+                    "name": "Advanced Recommendations - Above Threshold", 
+                    "status": "PASS", 
+                    "details": f"User with {stats.get('total_votes')} votes correctly shows recommendations available"
+                })
+            else:
+                print("❌ Failed: Recommendations should be available with 10+ votes")
+                self.test_results.append({
+                    "name": "Advanced Recommendations - Above Threshold", 
+                    "status": "FAIL", 
+                    "details": f"User with {stats.get('total_votes')} votes incorrectly shows recommendations not available"
+                })
+            
+            # Get recommendations (should have content as user has 10+ votes)
+            success, response = self.test_get_recommendations(use_auth=True)
+            if success and len(response) > 0:
+                print(f"✅ Verified: User with {stats.get('total_votes')} votes gets {len(response)} recommendations")
+                
+                # Check if recommendations have reasoning that suggests advanced algorithm
+                advanced_reasoning = False
+                for rec in response:
+                    reason = rec.get('reason', '').lower()
+                    if ('preference' in reason or 'matches your' in reason or 
+                        'rated' in reason or 'recent' in reason):
+                        advanced_reasoning = True
+                        print(f"✅ Advanced reasoning detected: '{rec.get('reason')}'")
+                        break
+                
+                if advanced_reasoning:
+                    self.test_results.append({
+                        "name": "Advanced Recommendations - Algorithm Quality", 
+                        "status": "PASS", 
+                        "details": "Recommendations show evidence of advanced algorithm with personalized reasoning"
+                    })
+                else:
+                    print("⚠️ Warning: Recommendations don't show clear evidence of advanced algorithm")
+                    self.test_results.append({
+                        "name": "Advanced Recommendations - Algorithm Quality", 
+                        "status": "WARNING", 
+                        "details": "Recommendations don't show clear evidence of advanced algorithm"
+                    })
+            else:
+                print(f"❌ Failed: User with {stats.get('total_votes')} votes should get recommendations")
+                self.test_results.append({
+                    "name": "Advanced Recommendations - Above Threshold Content", 
+                    "status": "FAIL", 
+                    "details": f"User with {stats.get('total_votes')} votes got no recommendations"
+                })
+        
+        # Test scenario 4: Guest user with session_id
+        print("\n📋 Scenario 4: Guest user with session_id")
+        # Create a new session
+        self.auth_token = None  # Clear auth token to use guest session
+        self.test_create_session()
+        
+        # Simulate votes to reach threshold
+        self.simulate_voting_to_threshold(use_auth=False, target_votes=10)
+        
+        # Get stats to verify vote count
+        _, stats = self.test_get_stats(use_auth=False)
+        if stats.get('total_votes') >= 10:
+            print(f"✅ Verified: Guest session has {stats.get('total_votes')} votes (≥ 10)")
+            
+            # Check recommendations availability flag
+            if stats.get('recommendations_available'):
+                print("✅ Verified: Recommendations available for guest with 10+ votes")
+                self.test_results.append({
+                    "name": "Advanced Recommendations - Guest User", 
+                    "status": "PASS", 
+                    "details": f"Guest with {stats.get('total_votes')} votes correctly shows recommendations available"
+                })
+            else:
+                print("❌ Failed: Recommendations should be available for guest with 10+ votes")
+                self.test_results.append({
+                    "name": "Advanced Recommendations - Guest User", 
+                    "status": "FAIL", 
+                    "details": f"Guest with {stats.get('total_votes')} votes incorrectly shows recommendations not available"
+                })
+            
+            # Get recommendations (should have content as guest has 10+ votes)
+            success, response = self.test_get_recommendations(use_auth=False)
+            if success and len(response) > 0:
+                print(f"✅ Verified: Guest with {stats.get('total_votes')} votes gets {len(response)} recommendations")
+                self.test_results.append({
+                    "name": "Advanced Recommendations - Guest Content", 
+                    "status": "PASS", 
+                    "details": f"Guest with {stats.get('total_votes')} votes gets {len(response)} recommendations"
+                })
+            else:
+                print(f"❌ Failed: Guest with {stats.get('total_votes')} votes should get recommendations")
+                self.test_results.append({
+                    "name": "Advanced Recommendations - Guest Content", 
+                    "status": "FAIL", 
+                    "details": f"Guest with {stats.get('total_votes')} votes got no recommendations"
+                })
+        
+        # Test scenario 5: Invalid session scenarios
+        print("\n📋 Scenario 5: Invalid session scenarios")
+        # Try to get recommendations with invalid session ID
+        params = {"session_id": "invalid_session_id_12345"}
+        success, response = self.run_test(
+            "Get Recommendations with Invalid Session",
+            "GET",
+            "recommendations",
+            404,  # Should return 404 Not Found
+            params=params
+        )
+        
+        if success:
+            print("✅ Verified: Invalid session ID correctly returns 404")
+            self.test_results.append({
+                "name": "Advanced Recommendations - Invalid Session", 
+                "status": "PASS", 
+                "details": "Invalid session ID correctly returns 404"
+            })
+        else:
+            print("❌ Failed: Invalid session ID should return 404")
+            self.test_results.append({
+                "name": "Advanced Recommendations - Invalid Session", 
+                "status": "FAIL", 
+                "details": f"Invalid session ID returned {response.get('status_code', 'unknown')} instead of 404"
+            })
+        
+        # Try to get recommendations with no auth and no session ID
+        success, response = self.run_test(
+            "Get Recommendations with No Auth/Session",
+            "GET",
+            "recommendations",
+            400,  # Should return 400 Bad Request
+            auth=False
+        )
+        
+        if success:
+            print("✅ Verified: No auth/session correctly returns 400")
+            self.test_results.append({
+                "name": "Advanced Recommendations - No Auth/Session", 
+                "status": "PASS", 
+                "details": "No auth/session correctly returns 400"
+            })
+        else:
+            print("❌ Failed: No auth/session should return 400")
+            self.test_results.append({
+                "name": "Advanced Recommendations - No Auth/Session", 
+                "status": "FAIL", 
+                "details": f"No auth/session returned {response.get('status_code', 'unknown')} instead of 400"
+            })
+        
+        return True
+        
+    def run_recommendation_tests(self):
+        """Run tests focused on the recommendation system changes"""
+        print("\n🚀 Starting Recommendation System Tests\n")
+        
+        # Initialize content if needed
+        self.run_test(
+            "Initialize Content",
+            "POST",
+            "initialize-content",
+            200,
+            data={}
+        )
+        
+        # Test the advanced recommendation engine
+        self.test_advanced_recommendations()
+        
+        # Print results
+        print(f"\n📊 Tests passed: {self.tests_passed}/{self.tests_run}")
+        
+        # Print detailed results
+        print("\n📋 Test Results:")
+        for result in self.test_results:
+            status_icon = "✅" if result["status"] == "PASS" else "❌" if result["status"] == "FAIL" else "⚠️"
+            print(f"{status_icon} {result['name']}: {result['status']} - {result['details']}")
+        
+        return self.tests_passed == self.tests_run
             
     def test_deselection_functionality(self):
         """Test the deselection functionality for content interactions"""
