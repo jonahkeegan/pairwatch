@@ -758,11 +758,20 @@ class MoviePreferenceAPITester:
         
         return success, response
 
-    def simulate_voting_to_threshold(self, use_auth=False):
-        """Simulate voting until we reach the recommendation threshold (36 votes)"""
-        print(f"\n🔄 Simulating votes to reach recommendation threshold using {'authenticated user' if use_auth else 'guest session'}...")
+    def simulate_voting_to_threshold(self, use_auth=False, target_votes=10):
+        """Simulate voting until we reach the recommendation threshold"""
+        print(f"\n🔄 Simulating votes to reach recommendation threshold ({target_votes} votes) using {'authenticated user' if use_auth else 'guest session'}...")
         
-        for i in range(36):
+        # Get current vote count
+        _, stats = self.test_get_stats(use_auth=use_auth)
+        current_votes = stats.get('total_votes', 0)
+        
+        # Calculate how many more votes we need
+        votes_needed = max(0, target_votes - current_votes)
+        
+        print(f"Current votes: {current_votes}, Need {votes_needed} more to reach threshold of {target_votes}")
+        
+        for i in range(votes_needed):
             # Get a voting pair
             success, pair = self.test_get_voting_pair(use_auth)
             if not success:
@@ -782,10 +791,10 @@ class MoviePreferenceAPITester:
                 return False
             
             # Print progress
-            if (i+1) % 5 == 0:
-                print(f"Progress: {i+1}/36 votes")
+            if (i+1) % 5 == 0 or i == votes_needed - 1:
+                print(f"Progress: {i+1}/{votes_needed} votes")
         
-        print("✅ Successfully completed 36 votes")
+        print(f"✅ Successfully completed {votes_needed} votes")
         return True
     
     def test_auth_flow(self):
