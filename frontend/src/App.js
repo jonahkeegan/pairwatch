@@ -132,10 +132,25 @@ function App() {
       const statsResponse = await axios.get(`${API}/stats`, { params });
       setUserStats(statsResponse.data);
       
-      // Check if recommendations are available
-      if (statsResponse.data.recommendations_available && !showRecommendations) {
-        const recResponse = await axios.get(`${API}/recommendations`, { params });
-        setRecommendations(recResponse.data);
+      // Check if recommendations are available - use different logic for users vs guests
+      if (user) {
+        // For authenticated users, check if they have ML recommendations
+        try {
+          const algoWatchlistResponse = await axios.get(`${API}/watchlist/algo_predicted`);
+          if (algoWatchlistResponse.data.items && algoWatchlistResponse.data.items.length > 0) {
+            setRecommendations(algoWatchlistResponse.data.items);
+            // Update stats to show recommendations are available
+            setUserStats(prev => ({ ...prev, recommendations_available: true }));
+          }
+        } catch (error) {
+          console.error('Algo recommendations error:', error);
+        }
+      } else {
+        // For guests, use the old system (36 votes)
+        if (statsResponse.data.recommendations_available && !showRecommendations) {
+          const recResponse = await axios.get(`${API}/recommendations`, { params });
+          setRecommendations(recResponse.data);
+        }
       }
     } catch (error) {
       console.error('Stats error:', error);
