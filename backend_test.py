@@ -21,6 +21,9 @@ class MoviePreferenceAPITester:
         self.test_user_email = f"test_user_{datetime.now().strftime('%Y%m%d%H%M%S')}@example.com"
         self.test_user_password = "TestPassword123!"
         self.test_user_name = f"Test User {datetime.now().strftime('%H%M%S')}"
+        
+        print(f"🔍 Testing API at: {self.base_url}")
+        print(f"📝 Test user: {self.test_user_email}")
 
     def run_test(self, name, method, endpoint, expected_status, data=None, auth=False, params=None):
         """Run a single API test"""
