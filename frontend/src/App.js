@@ -910,17 +910,28 @@ function App() {
               ))}
             </div>
             
-            {currentWatchlist.length === 0 && (
-              <div className="text-center py-12">
+            {currentWatchlist.filter(item => !removedRecommendations.has(item.watchlist_id)).length === 0 && (
+              <div className="text-center py-12 col-span-full">
                 <div className="text-6xl mb-4">📝</div>
                 <h3 className="text-2xl font-bold text-white mb-4">
-                  {watchlistType === 'user_defined' ? 'Your watchlist is empty' : 'No AI recommendations yet'}
+                  {watchlistType === 'user_defined' ? 'Your watchlist is empty' : 
+                   currentWatchlist.length > 0 ? 'All recommendations processed!' : 'No AI recommendations yet'}
                 </h3>
                 <p className="text-blue-200">
                   {watchlistType === 'user_defined' 
                     ? 'Start adding movies and shows you want to watch!' 
-                    : 'Generate recommendations based on your preferences!'}
+                    : currentWatchlist.length > 0 
+                      ? 'You\'ve interacted with all your recommendations. Generate new ones to discover more content!'
+                      : 'Generate recommendations based on your preferences!'}
                 </p>
+                {watchlistType === 'algo_predicted' && currentWatchlist.length > 0 && (
+                  <button
+                    onClick={generateRecommendations}
+                    className="mt-4 bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg transition-colors"
+                  >
+                    🔮 Generate New Recommendations
+                  </button>
+                )}
               </div>
             )}
           </div>
