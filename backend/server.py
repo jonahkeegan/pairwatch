@@ -869,7 +869,7 @@ async def submit_vote(
         return {
             "vote_recorded": True,
             "total_votes": session["vote_count"],
-            "recommendations_available": session["vote_count"] >= 36,
+            "recommendations_available": session["vote_count"] >= 10,
             "user_authenticated": False
         }
 
