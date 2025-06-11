@@ -982,10 +982,17 @@ async def check_and_auto_refresh_recommendations(user_id: str) -> bool:
         # Auto-refresh if user has 5+ new interactions or it's been 3+ days
         days_since_last = (datetime.utcnow() - last_rec_time).days
         
-        return total_new_interactions >= 5 or days_since_last >= 3
+        print(f"DEBUG: User {user_id} - new interactions: {total_new_interactions}, days since last: {days_since_last}")
+        
+        refresh_needed = total_new_interactions >= 5 or days_since_last >= 3
+        print(f"DEBUG: Refresh needed for user {user_id}: {refresh_needed}")
+        
+        return refresh_needed
         
     except Exception as e:
         print(f"Error checking refresh need: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return True  # Default to refresh on error
 
 async def get_stored_ai_recommendations(user_id: str) -> List[Recommendation]:
