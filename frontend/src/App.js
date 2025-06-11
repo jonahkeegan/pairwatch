@@ -1351,12 +1351,6 @@ function App() {
           {user ? (
             <div className="flex items-center space-x-2 sm:space-x-4">
               <button
-                onClick={toggleWatchlist}
-                className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-3 sm:px-4 rounded-lg transition-colors text-sm sm:text-base"
-              >
-                📝 Watchlists
-              </button>
-              <button
                 onClick={toggleProfile}
                 className="text-white hover:text-blue-200 flex items-center text-sm sm:text-base"
               >
