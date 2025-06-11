@@ -543,7 +543,134 @@ function App() {
     );
   }
 
-  // Profile Page
+  // Watchlist Page
+  if (showWatchlist && user) {
+    const currentWatchlist = watchlistType === 'user_defined' ? userWatchlist : algoWatchlist;
+    
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 p-4">
+        <div className="max-w-6xl mx-auto">
+          <div className="bg-white bg-opacity-10 backdrop-blur-lg rounded-xl p-8">
+            <div className="flex justify-between items-center mb-8">
+              <h1 className="text-4xl font-bold text-white">My Watchlists</h1>
+              <button
+                onClick={toggleWatchlist}
+                className="text-blue-300 hover:text-blue-200"
+              >
+                Back to Voting
+              </button>
+            </div>
+            
+            {/* Watchlist Type Selector */}
+            <div className="flex space-x-4 mb-8">
+              <button
+                onClick={() => setWatchlistType('user_defined')}
+                className={`px-6 py-3 rounded-lg font-semibold transition-colors ${
+                  watchlistType === 'user_defined'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white bg-opacity-20 text-blue-200 hover:bg-opacity-30'
+                }`}
+              >
+                My Watchlist ({userWatchlist.length})
+              </button>
+              <button
+                onClick={() => setWatchlistType('algo_predicted')}
+                className={`px-6 py-3 rounded-lg font-semibold transition-colors ${
+                  watchlistType === 'algo_predicted'
+                    ? 'bg-green-600 text-white'
+                    : 'bg-white bg-opacity-20 text-green-200 hover:bg-opacity-30'
+                }`}
+              >
+                AI Recommendations ({algoWatchlist.length})
+              </button>
+              <button
+                onClick={generateRecommendations}
+                className="px-6 py-3 rounded-lg font-semibold bg-purple-600 text-white hover:bg-purple-700 transition-colors"
+              >
+                🔮 Generate New Recommendations
+              </button>
+            </div>
+            
+            {/* Watchlist Content */}
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {currentWatchlist.map((item) => (
+                <div key={item.watchlist_id} className="bg-white bg-opacity-10 backdrop-blur-lg rounded-xl overflow-hidden">
+                  <div className="relative">
+                    {item.content.poster && (
+                      <img 
+                        src={item.content.poster} 
+                        alt={item.content.title}
+                        className="w-full h-64 object-cover cursor-pointer"
+                        onClick={() => openPosterModal(item.content)}
+                      />
+                    )}
+                    <div className="absolute top-2 right-2">
+                      <button
+                        onClick={() => removeFromWatchlist(item.watchlist_id)}
+                        className="bg-red-600 text-white p-2 rounded-full hover:bg-red-700 transition-colors"
+                        title="Remove from watchlist"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    {watchlistType === 'algo_predicted' && (
+                      <div className="absolute bottom-2 left-2">
+                        <div className="bg-green-600 bg-opacity-90 text-white px-3 py-1 rounded-full text-sm">
+                          AI Recommended
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-6 text-white">
+                    <h3 className="text-xl font-bold mb-2">{item.content.title}</h3>
+                    <p className="text-blue-200 mb-2">({item.content.year})</p>
+                    
+                    {watchlistType === 'algo_predicted' && item.reasoning && (
+                      <p className="text-sm text-green-200 mb-4">{item.reasoning}</p>
+                    )}
+                    
+                    <div className="flex justify-between items-center">
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => handleContentInteraction(item.content.id, 'watched')}
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm transition-colors"
+                        >
+                          ✓ Watched
+                        </button>
+                        <button
+                          onClick={() => handleContentInteraction(item.content.id, 'not_interested')}
+                          className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded text-sm transition-colors"
+                        >
+                          Not Interested
+                        </button>
+                      </div>
+                      <div className="text-sm text-gray-300">
+                        Priority: {item.priority || 1}/5
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            {currentWatchlist.length === 0 && (
+              <div className="text-center py-12">
+                <div className="text-6xl mb-4">📝</div>
+                <h3 className="text-2xl font-bold text-white mb-4">
+                  {watchlistType === 'user_defined' ? 'Your watchlist is empty' : 'No AI recommendations yet'}
+                </h3>
+                <p className="text-blue-200">
+                  {watchlistType === 'user_defined' 
+                    ? 'Start adding movies and shows you want to watch!' 
+                    : 'Generate recommendations based on your preferences!'}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
   if (showProfile && user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 p-4">
