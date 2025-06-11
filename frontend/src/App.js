@@ -599,6 +599,7 @@ function App() {
   const getButtonStyle = (contentId, interactionType) => {
     const currentInteraction = getInteractionForContent(contentId);
     const isActive = currentInteraction === interactionType;
+    const timer = passTimers[contentId];
     
     const baseStyle = "px-3 py-1 rounded text-xs transition-all duration-200 cursor-pointer select-none";
     
@@ -610,6 +611,13 @@ function App() {
         case 'want_to_watch':
           return `${baseStyle} bg-blue-700 text-white border-2 border-blue-500 hover:bg-blue-600 hover:border-blue-400 shadow-lg`;
         case 'not_interested':
+          // Special styling for countdown timer
+          if (timer && timer.countdown > 0) {
+            const intensity = (5 - timer.countdown) / 5; // 0 to 1 as countdown progresses
+            const redValue = Math.floor(255 * intensity);
+            const pulseClass = timer.countdown <= 2 ? 'animate-pulse' : '';
+            return `${baseStyle} text-white border-2 border-red-500 hover:border-red-400 shadow-lg ${pulseClass}`;
+          }
           return `${baseStyle} bg-gray-700 text-white border-2 border-gray-500 hover:bg-gray-600 hover:border-gray-400 shadow-lg`;
         default:
           return baseStyle;
