@@ -210,3 +210,5 @@
     message: "Completed testing of backend recommendation system changes. The AdvancedRecommendationEngine is working correctly and provides personalized recommendations for users with 10+ votes. Verified that the vote threshold has been updated from 36 to 10 votes. Tested fallback functionality for users with insufficient voting data. All backend API endpoints are working as expected."
   - agent: "testing"
     message: "Verified the vote countdown functionality in the stats endpoint. Tested three scenarios: 1) New user with 0 votes shows votes_until_recommendations = 10, 2) User with 5 votes shows votes_until_recommendations = 5, and 3) User with 10+ votes shows votes_until_recommendations = 0 and recommendations_available = true. All scenarios passed for both authenticated users and guest sessions, confirming the new 10-vote threshold is working correctly."
+  - agent: "main" 
+    message: "Addressed user feedback about vote countdown displaying wrong threshold. Backend has been verified to correctly return 10-vote threshold in stats endpoint. User should see countdown starting at 10 votes instead of 36 when starting to vote."
