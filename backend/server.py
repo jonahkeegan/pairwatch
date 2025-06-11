@@ -109,6 +109,33 @@ class Vote(BaseModel):
     content_type: str  # "movie" or "series"
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
+class UserContentInteraction(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: Optional[str] = None
+    session_id: Optional[str] = None
+    content_id: str
+    interaction_type: str  # "vote_winner", "vote_loser", "watched", "want_to_watch", "not_interested"
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class UserWatchlist(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    content_id: str
+    added_at: datetime = Field(default_factory=datetime.utcnow)
+    priority: int = 1  # 1-5 scale for urgency (user-defined)
+    watchlist_type: str = "user_defined"  # "user_defined" or "algo_predicted"
+
+class AlgoRecommendation(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    content_id: str
+    recommendation_score: float
+    reasoning: str
+    confidence: float
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    viewed: bool = False
+    user_action: Optional[str] = None  # "added_to_watchlist", "dismissed", "not_interested"
+
 class UserSession(BaseModel):
     session_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     vote_count: int = 0
