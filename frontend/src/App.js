@@ -236,13 +236,22 @@ function App() {
       await getNextPair();
       
       // Check if recommendations are now available
-      if (voteResponse.data.recommendations_available && !showRecommendations) {
-        const params = {};
-        if (!user && sessionId) {
-          params.session_id = sessionId;
+      if (user) {
+        // For authenticated users, check if they have enough interactions for ML recommendations
+        const userInteractionCount = (voteResponse.data.total_votes || 0);
+        if (userInteractionCount >= 10) { // Lower threshold for ML recommendations
+          setUserStats(prev => ({ ...prev, recommendations_available: true }));
         }
-        const recResponse = await axios.get(`${API}/recommendations`, { params });
-        setRecommendations(recResponse.data);
+      } else {
+        // For guests, use original 36-vote threshold
+        if (voteResponse.data.recommendations_available && !showRecommendations) {
+          const params = {};
+          if (!user && sessionId) {
+            params.session_id = sessionId;
+          }
+          const recResponse = await axios.get(`${API}/recommendations`, { params });
+          setRecommendations(recResponse.data);
+        }
       }
       
     } catch (error) {
