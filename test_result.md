@@ -241,6 +241,7 @@
     - "Rename 'View My Recommendations' to 'My Recommendations'"
     - "Move 'My Watchlist' button from watchlists page to home page"
     - "Remove dual watchlist interface confusion"
+    - "Remove manual AI recommendation generation and implement automatic system"
   stuck_tasks: []
   test_all: true
   test_priority: "high_first"
