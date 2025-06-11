@@ -706,27 +706,6 @@ function App() {
     }
   };
 
-  const generateRecommendations = async () => {
-    if (!user) {
-      alert('Please login to get personalized recommendations');
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const response = await axios.post(`${API}/recommendations/generate`);
-      
-      alert(response.data.message);
-      await loadWatchlists(); // Refresh to show new recommendations
-      
-    } catch (error) {
-      console.error('Recommendation generation error:', error);
-      alert(error.response?.data?.detail || 'Failed to generate recommendations');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const removeFromWatchlist = async (watchlistId) => {
     try {
       await axios.delete(`${API}/watchlist/${watchlistId}`);
