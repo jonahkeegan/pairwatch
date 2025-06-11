@@ -137,6 +137,9 @@
       - working: true
         agent: "testing"
         comment: "Conducted additional testing of the stats endpoint to verify the vote countdown functionality. Created a dedicated test script that tests three scenarios: 1) New user with 0 votes shows votes_until_recommendations = 10, 2) User with 5 votes shows votes_until_recommendations = 5, and 3) User with 10+ votes shows votes_until_recommendations = 0 and recommendations_available = true. All scenarios passed for both authenticated users and guest sessions, confirming the new 10-vote threshold is working correctly."
+      - working: true
+        agent: "testing"
+        comment: "Specifically tested the stats endpoint for authenticated users to verify the 10-vote threshold. Created a new test function that registers a new user, checks initial stats (confirmed votes_until_recommendations = 10), submits 3 votes, verifies countdown (votes_until_recommendations = 7), and then submits 7 more votes to reach the threshold. Final verification confirmed votes_until_recommendations = 0 and recommendations_available = true after 10 votes. The test passed successfully, confirming that new logged-in users see the correct 10-vote threshold instead of 36."
 
 ## frontend:
   - task: "Rename 'View My Recommendations' to 'My Recommendations'"
