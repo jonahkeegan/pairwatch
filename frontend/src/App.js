@@ -991,7 +991,7 @@ function App() {
 
   // Watchlist Page
   if (showWatchlist && user) {
-    const currentWatchlist = watchlistType === 'user_defined' ? userWatchlist : algoWatchlist;
+    const currentWatchlist = userWatchlist; // Only show user-defined watchlist
     
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 p-4">
