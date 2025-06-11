@@ -170,7 +170,7 @@ def create_access_token(data: dict) -> str:
     encoded_jwt = jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
     return encoded_jwt
 
-async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> Optional[User]:
+async def get_current_user(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> Optional[User]:
     """Get current user from JWT token"""
     if not credentials:
         return None
@@ -180,7 +180,7 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         user_id: str = payload.get("sub")
         if user_id is None:
             return None
-    except jwt.ExpiredSignatureToken:
+    except jwt.ExpiredSignatureError:
         return None
     except jwt.JWTError:
         return None
