@@ -462,29 +462,117 @@ class MoviePreferenceAPITester:
         
         return False, response
     
-    def test_recommendation_user_action(self, rec_id, action):
-        """Test recording user action on algorithmic recommendation"""
-        if not self.auth_token:
-            print("❌ No auth token available")
-            self.test_results.append({"name": f"Recommendation Action ({action})", "status": "SKIP", "details": "No auth token available"})
-            return False, {}
+    def test_independent_content_interactions(self):
+        """Test independent content interactions for both tiles in a voting pair"""
+        print("\n🔍 Testing Independent Content Interactions...")
         
-        data = {"action": action}
+        # Get a voting pair
+        pair_success, pair = self.test_get_voting_pair(use_auth=True if self.auth_token else False)
+        if not pair_success:
+            print("❌ Failed to get voting pair for independent interaction tests")
+            self.test_results.append({"name": "Independent Content Interactions", "status": "FAIL", "details": "Failed to get voting pair"})
+            return False
         
-        success, response = self.run_test(
-            f"Recommendation Action ({action})",
-            "POST",
-            f"recommendations/{rec_id}/action",
-            200,
-            data=data,
-            auth=True
+        # Get the content IDs from the pair
+        content_id1 = pair['item1']['id']
+        content_id2 = pair['item2']['id']
+        
+        print(f"Testing independent interactions on content pair:")
+        print(f"  Item 1: {pair['item1']['title']} (ID: {content_id1})")
+        print(f"  Item 2: {pair['item2']['title']} (ID: {content_id2})")
+        
+        # Test different interactions for each content item
+        # Mark first item as "watched"
+        watched_success, _ = self.test_content_interaction(
+            content_id1, 
+            "watched",
+            use_auth=True if self.auth_token else False,
+            session_id=self.session_id if not self.auth_token else None
         )
         
-        if success and response.get('success') == True:
-            print(f"✅ Recommendation action '{action}' recorded successfully")
-            return True, response
+        if not watched_success:
+            print("❌ Failed to mark first item as watched")
+            self.test_results.append({"name": "Independent Content Interactions - Watched", "status": "FAIL", "details": "Failed to mark first item as watched"})
+            return False
         
-        return False, response
+        # Mark second item as "want_to_watch"
+        watchlist_success, _ = self.test_content_interaction(
+            content_id2, 
+            "want_to_watch",
+            use_auth=True if self.auth_token else False,
+            session_id=self.session_id if not self.auth_token else None
+        )
+        
+        if not watchlist_success:
+            print("❌ Failed to mark second item as want to watch")
+            self.test_results.append({"name": "Independent Content Interactions - Want to Watch", "status": "FAIL", "details": "Failed to mark second item as want to watch"})
+            return False
+        
+        # Verify the status of both items
+        status1_success, status1 = self.test_get_content_user_status(
+            content_id1, 
+            use_auth=True if self.auth_token else False
+        )
+        
+        status2_success, status2 = self.test_get_content_user_status(
+            content_id2, 
+            use_auth=True if self.auth_token else False
+        )
+        
+        if not status1_success or not status2_success:
+            print("❌ Failed to get content status")
+            self.test_results.append({"name": "Independent Content Interactions - Status Check", "status": "FAIL", "details": "Failed to get content status"})
+            return False
+        
+        # Verify that the interactions are independent
+        if status1.get('has_watched', False) and status2.get('wants_to_watch', False):
+            print("✅ Verified independent interactions:")
+            print(f"  Item 1 ({pair['item1']['title']}): Marked as watched")
+            print(f"  Item 2 ({pair['item2']['title']}): Added to watchlist")
+            self.test_results.append({"name": "Independent Content Interactions", "status": "PASS", "details": "Successfully verified independent interactions for both items"})
+            
+            # Now test changing an interaction
+            print("\nTesting interaction change...")
+            
+            # Change first item from "watched" to "not_interested"
+            change_success, _ = self.test_content_interaction(
+                content_id1, 
+                "not_interested",
+                use_auth=True if self.auth_token else False,
+                session_id=self.session_id if not self.auth_token else None
+            )
+            
+            if not change_success:
+                print("❌ Failed to change interaction")
+                self.test_results.append({"name": "Independent Content Interactions - Change", "status": "FAIL", "details": "Failed to change interaction"})
+                return False
+            
+            # Verify the change
+            status1_after_success, status1_after = self.test_get_content_user_status(
+                content_id1, 
+                use_auth=True if self.auth_token else False
+            )
+            
+            if not status1_after_success:
+                print("❌ Failed to get updated content status")
+                self.test_results.append({"name": "Independent Content Interactions - Change Verification", "status": "FAIL", "details": "Failed to get updated content status"})
+                return False
+            
+            if status1_after.get('not_interested', False):
+                print("✅ Successfully changed interaction:")
+                print(f"  Item 1 ({pair['item1']['title']}): Changed from 'watched' to 'not interested'")
+                self.test_results.append({"name": "Independent Content Interactions - Change", "status": "PASS", "details": "Successfully changed interaction"})
+                return True
+            else:
+                print("❌ Failed to verify interaction change")
+                self.test_results.append({"name": "Independent Content Interactions - Change Verification", "status": "FAIL", "details": "Failed to verify interaction change"})
+                return False
+        else:
+            print("❌ Failed to verify independent interactions")
+            print(f"  Item 1 watched status: {status1.get('has_watched', False)}")
+            print(f"  Item 2 want to watch status: {status2.get('wants_to_watch', False)}")
+            self.test_results.append({"name": "Independent Content Interactions", "status": "FAIL", "details": "Failed to verify independent interactions"})
+            return False
 
     def test_initialize_content(self):
         """Test content initialization"""
