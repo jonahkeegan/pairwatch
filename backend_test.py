@@ -574,52 +574,29 @@ class MoviePreferenceAPITester:
             self.test_results.append({"name": "Independent Content Interactions", "status": "FAIL", "details": "Failed to verify independent interactions"})
             return False
 
-    def test_initialize_content(self):
-        """Test content initialization"""
+    def test_recommendation_user_action(self, rec_id, action):
+        """Test recording user action on algorithmic recommendation"""
+        if not self.auth_token:
+            print("❌ No auth token available")
+            self.test_results.append({"name": f"Recommendation Action ({action})", "status": "SKIP", "details": "No auth token available"})
+            return False, {}
+        
+        data = {"action": action}
+        
         success, response = self.run_test(
-            "Initialize Content",
+            f"Recommendation Action ({action})",
             "POST",
-            "initialize-content",
+            f"recommendations/{rec_id}/action",
             200,
-            data={}
+            data=data,
+            auth=True
         )
         
-        if success:
-            # Check if the response contains information about initialized content
-            if 'total_items' in response:
-                print(f"✅ Content initialized with {response['total_items']} items")
-                
-                # Check if we have the expanded content library (should be close to 284 items)
-                if response['total_items'] >= 200:
-                    print(f"✅ Expanded content library confirmed with {response['total_items']} items (expected ~284)")
-                    self.test_results.append({
-                        "name": "Expanded Content Library", 
-                        "status": "PASS", 
-                        "details": f"Found {response['total_items']} items (expected ~284)"
-                    })
-                else:
-                    print(f"⚠️ Content library seems smaller than expected: {response['total_items']} items (expected ~284)")
-                    self.test_results.append({
-                        "name": "Expanded Content Library", 
-                        "status": "WARNING", 
-                        "details": f"Found only {response['total_items']} items (expected ~284)"
-                    })
-            else:
-                print("⚠️ Response doesn't contain total_items count")
-                
-            # Check for movies and series counts if available
-            if 'movies' in response:
-                print(f"✅ Initialized {response['movies']} movies")
-            if 'series' in response:
-                print(f"✅ Initialized {response['series']} TV shows")
-                
-            # Check for any initialization errors
-            if 'errors' in response and response['errors']:
-                print(f"⚠️ Found {len(response['errors'])} initialization errors")
-                for error in response['errors'][:5]:  # Show first 5 errors
-                    print(f"  - {error}")
+        if success and response.get('success') == True:
+            print(f"✅ Recommendation action '{action}' recorded successfully")
+            return True, response
         
-        return success, response
+        return False, response
 
     def test_create_session(self):
         """Test session creation"""
