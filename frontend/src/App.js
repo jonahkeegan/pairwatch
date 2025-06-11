@@ -1068,8 +1068,42 @@ function App() {
                   )}
                 </div>
                 {currentPair.item2.plot && (
-                  <p className="text-xs md:text-sm text-gray-300 line-clamp-3">{currentPair.item2.plot}</p>
+                  <p className="text-xs md:text-sm text-gray-300 line-clamp-3 mb-4">{currentPair.item2.plot}</p>
                 )}
+                
+                {/* Action Buttons */}
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleContentInteraction(currentPair.item2.id, 'watched');
+                    }}
+                    className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs transition-colors"
+                    title="Mark as watched"
+                  >
+                    ✓ Watched
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleContentInteraction(currentPair.item2.id, 'want_to_watch');
+                    }}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs transition-colors"
+                    title="Add to watchlist"
+                  >
+                    📝 Want to Watch
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleContentInteraction(currentPair.item2.id, 'not_interested');
+                    }}
+                    className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded text-xs transition-colors"
+                    title="Not interested"
+                  >
+                    ❌ Pass
+                  </button>
+                </div>
               </div>
             </div>
           </div>
