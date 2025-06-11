@@ -122,15 +122,18 @@
 
   - task: "Update vote thresholds for recommendations"
     implemented: true
-    working: "NA" 
+    working: true
     file: "backend/server.py"
     stuck_count: 0
     priority: "medium"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Updated stats endpoint and vote submission responses to use 10 vote threshold instead of 36 for recommendations availability."
+      - working: true
+        agent: "testing"
+        comment: "Verified that recommendations become available after 10 votes instead of 36. Tested with both authenticated users and guest sessions. The /api/stats endpoint correctly reports recommendations_available=true when total_votes >= 10 and votes_until_recommendations=0."
 
 ## frontend:
   - task: "Rename 'View My Recommendations' to 'My Recommendations'"
