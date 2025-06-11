@@ -966,16 +966,12 @@ async def check_and_auto_refresh_recommendations(user_id: str) -> bool:
             "user_id": user_id,
             "created_at": {"$gt": last_rec_time}
         }).to_list(length=None)
-        
         total_new_interactions = len(recent_interactions) + len(recent_votes)
         
         # Auto-refresh if user has 5+ new interactions or it's been 3+ days
         days_since_last = (datetime.utcnow() - last_rec_time).days
         
-        print(f"DEBUG: User {user_id} - new interactions: {total_new_interactions}, days since last: {days_since_last}")
-        
         refresh_needed = total_new_interactions >= 5 or days_since_last >= 3
-        print(f"DEBUG: Refresh needed for user {user_id}: {refresh_needed}")
         
         return refresh_needed
         
