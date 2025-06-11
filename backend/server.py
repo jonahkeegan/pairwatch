@@ -878,89 +878,40 @@ async def get_recommendations(
     session_id: Optional[str] = Query(None),
     current_user: Optional[User] = Depends(get_current_user)
 ) -> List[Recommendation]:
-    """Get AI-powered recommendations based on user preferences"""
-    # For authenticated users, use advanced ML recommendations
+    """Get AI-powered recommendations with automatic generation and refresh"""
+    # For authenticated users, use advanced ML recommendations with auto-generation
     if current_user:
         try:
-            # Get all content for feature extraction
-            all_content = await db.content.find().to_list(length=None)
+            # Check if we need to refresh recommendations automatically
+            should_refresh = await check_and_auto_refresh_recommendations(current_user.id)
             
-            if not all_content:
-                return []  # Return empty list if no content
-            
-            # Extract content features
-            content_df = recommendation_engine.extract_content_features(all_content)
-            
-            # Build user profile from interactions
-            user_interactions = await db.user_interactions.find({"user_id": current_user.id}).to_list(length=None)
-            
-            # Also include vote data as interactions
+            # Get user votes to determine if they have enough data
             user_votes = await db.votes.find({"user_id": current_user.id}).to_list(length=None)
-            
-            # Convert votes to interactions
-            for vote in user_votes:
-                # Add winner interaction
-                user_interactions.append({
-                    "content_id": vote["winner_id"],
-                    "interaction_type": "vote_winner",
-                    "created_at": vote["created_at"]
-                })
-                # Add loser interaction  
-                user_interactions.append({
-                    "content_id": vote["loser_id"],
-                    "interaction_type": "vote_loser",
-                    "created_at": vote["created_at"]
-                })
-            
-            # Add content details to interactions
-            for interaction in user_interactions:
-                content = await db.content.find_one({"id": interaction["content_id"]})
-                if content:
-                    interaction["content"] = content
             
             # If user has insufficient data, fall back to simple recommendations
             if len(user_votes) < 10:
                 return await get_simple_recommendations_fallback(user_votes)
             
-            # Build user profile
-            user_profile = recommendation_engine.build_user_profile(user_interactions)
+            # Try to get existing AI recommendations first
+            existing_recommendations = await get_stored_ai_recommendations(current_user.id)
             
-            # Get watched content IDs
-            watched_interactions = await db.user_interactions.find({
-                "user_id": current_user.id,
-                "interaction_type": "watched"
-            }).to_list(length=None)
+            # If we have valid stored recommendations and don't need refresh, return them
+            if existing_recommendations and not should_refresh:
+                return existing_recommendations
             
-            watched_content_ids = [i["content_id"] for i in watched_interactions]
+            # Generate new AI recommendations automatically
+            await auto_generate_ai_recommendations(current_user.id)
             
-            # Also exclude content user marked as "not_interested"
-            not_interested = await db.user_interactions.find({
-                "user_id": current_user.id,
-                "interaction_type": "not_interested"
-            }).to_list(length=None)
+            # Get the newly generated recommendations
+            new_recommendations = await get_stored_ai_recommendations(current_user.id)
+            if new_recommendations:
+                return new_recommendations
             
-            watched_content_ids.extend([i["content_id"] for i in not_interested])
-            
-            # Generate recommendations
-            ml_recommendations = recommendation_engine.generate_recommendations(
-                user_profile, content_df, watched_content_ids, num_recommendations=5
-            )
-            
-            # Convert to API format
-            recommendations = []
-            for rec in ml_recommendations:
-                content = await db.content.find_one({"id": rec["content_id"]})
-                if content:
-                    recommendations.append(Recommendation(
-                        title=content["title"],
-                        reason=rec["reasoning"],
-                        poster=content.get("poster"),
-                        imdb_id=content["imdb_id"]
-                    ))
-            
-            return recommendations
+            # Fallback to real-time generation if storage fails
+            return await generate_realtime_recommendations(current_user.id)
             
         except Exception as e:
+            print(f"Error in AI recommendations: {str(e)}")
             # Fall back to simple recommendations on error
             user_votes = await db.votes.find({"user_id": current_user.id}).to_list(length=None)
             return await get_simple_recommendations_fallback(user_votes)
@@ -974,6 +925,232 @@ async def get_recommendations(
         return await get_simple_recommendations_fallback(user_votes)
     else:
         raise HTTPException(status_code=400, detail="Either login or provide session_id")
+
+async def check_and_auto_refresh_recommendations(user_id: str) -> bool:
+    """Check if recommendations need automatic refresh"""
+    try:
+        # Get last recommendation generation time
+        latest_rec = await db.algo_recommendations.find({
+            "user_id": user_id
+        }).sort("created_at", -1).limit(1).to_list(length=1)
+        
+        if not latest_rec:
+            return True  # No recommendations exist, need to generate
+        
+        last_rec_time = latest_rec[0]["created_at"]
+        
+        # Get recent interactions since last recommendation
+        recent_interactions = await db.user_interactions.find({
+            "user_id": user_id,
+            "created_at": {"$gt": last_rec_time}
+        }).to_list(length=None)
+        
+        recent_votes = await db.votes.find({
+            "user_id": user_id,
+            "created_at": {"$gt": last_rec_time}
+        }).to_list(length=None)
+        
+        total_new_interactions = len(recent_interactions) + len(recent_votes)
+        
+        # Auto-refresh if user has 5+ new interactions or it's been 3+ days
+        days_since_last = (datetime.utcnow() - last_rec_time).days
+        
+        return total_new_interactions >= 5 or days_since_last >= 3
+        
+    except Exception as e:
+        print(f"Error checking refresh need: {str(e)}")
+        return True  # Default to refresh on error
+
+async def get_stored_ai_recommendations(user_id: str) -> List[Recommendation]:
+    """Get stored AI recommendations from database"""
+    try:
+        # Get stored recommendations
+        stored_recs = await db.algo_recommendations.find({
+            "user_id": user_id,
+            "viewed": False
+        }).sort("recommendation_score", -1).limit(5).to_list(length=5)
+        
+        recommendations = []
+        for rec in stored_recs:
+            content = await db.content.find_one({"id": rec["content_id"]})
+            if content:
+                recommendations.append(Recommendation(
+                    title=content["title"],
+                    reason=rec["reasoning"],
+                    poster=content.get("poster"),
+                    imdb_id=content["imdb_id"]
+                ))
+        
+        return recommendations
+        
+    except Exception as e:
+        print(f"Error getting stored recommendations: {str(e)}")
+        return []
+
+async def auto_generate_ai_recommendations(user_id: str):
+    """Automatically generate and store AI recommendations"""
+    try:
+        # Get all content for feature extraction
+        all_content = await db.content.find().to_list(length=None)
+        
+        if not all_content:
+            return
+        
+        # Extract content features
+        content_df = recommendation_engine.extract_content_features(all_content)
+        
+        # Build user profile from interactions
+        user_interactions = await db.user_interactions.find({"user_id": user_id}).to_list(length=None)
+        
+        # Also include vote data as interactions
+        user_votes = await db.votes.find({"user_id": user_id}).to_list(length=None)
+        
+        # Convert votes to interactions
+        for vote in user_votes:
+            # Add winner interaction
+            user_interactions.append({
+                "content_id": vote["winner_id"],
+                "interaction_type": "vote_winner",
+                "created_at": vote["created_at"]
+            })
+            # Add loser interaction  
+            user_interactions.append({
+                "content_id": vote["loser_id"],
+                "interaction_type": "vote_loser",
+                "created_at": vote["created_at"]
+            })
+        
+        # Add content details to interactions
+        for interaction in user_interactions:
+            content = await db.content.find_one({"id": interaction["content_id"]})
+            if content:
+                interaction["content"] = content
+        
+        # Build user profile
+        user_profile = recommendation_engine.build_user_profile(user_interactions)
+        
+        # Get watched content IDs
+        watched_interactions = await db.user_interactions.find({
+            "user_id": user_id,
+            "interaction_type": "watched"
+        }).to_list(length=None)
+        
+        watched_content_ids = [i["content_id"] for i in watched_interactions]
+        
+        # Also exclude content user marked as "not_interested"
+        not_interested = await db.user_interactions.find({
+            "user_id": user_id,
+            "interaction_type": "not_interested"
+        }).to_list(length=None)
+        
+        watched_content_ids.extend([i["content_id"] for i in not_interested])
+        
+        # Generate recommendations
+        ml_recommendations = recommendation_engine.generate_recommendations(
+            user_profile, content_df, watched_content_ids, num_recommendations=10
+        )
+        
+        if not ml_recommendations:
+            return
+        
+        # Clear old recommendations
+        await db.algo_recommendations.delete_many({"user_id": user_id})
+        
+        # Store new recommendations
+        for rec in ml_recommendations:
+            # Store in algo_recommendations
+            algo_rec = AlgoRecommendation(
+                user_id=user_id,
+                content_id=rec["content_id"],
+                recommendation_score=rec["score"],
+                reasoning=rec["reasoning"],
+                confidence=rec["confidence"]
+            )
+            await db.algo_recommendations.insert_one(algo_rec.dict())
+        
+        print(f"Auto-generated {len(ml_recommendations)} recommendations for user {user_id}")
+        
+    except Exception as e:
+        print(f"Error auto-generating recommendations: {str(e)}")
+
+async def generate_realtime_recommendations(user_id: str) -> List[Recommendation]:
+    """Generate recommendations in real-time as fallback"""
+    try:
+        # Get all content for feature extraction
+        all_content = await db.content.find().to_list(length=None)
+        
+        if not all_content:
+            return []
+        
+        # Extract content features
+        content_df = recommendation_engine.extract_content_features(all_content)
+        
+        # Build user profile from interactions
+        user_interactions = await db.user_interactions.find({"user_id": user_id}).to_list(length=None)
+        
+        # Also include vote data as interactions
+        user_votes = await db.votes.find({"user_id": user_id}).to_list(length=None)
+        
+        # Convert votes to interactions
+        for vote in user_votes:
+            user_interactions.append({
+                "content_id": vote["winner_id"],
+                "interaction_type": "vote_winner",
+                "created_at": vote["created_at"]
+            })
+            user_interactions.append({
+                "content_id": vote["loser_id"],
+                "interaction_type": "vote_loser",
+                "created_at": vote["created_at"]
+            })
+        
+        # Add content details to interactions
+        for interaction in user_interactions:
+            content = await db.content.find_one({"id": interaction["content_id"]})
+            if content:
+                interaction["content"] = content
+        
+        # Build user profile
+        user_profile = recommendation_engine.build_user_profile(user_interactions)
+        
+        # Get watched content IDs
+        watched_interactions = await db.user_interactions.find({
+            "user_id": user_id,
+            "interaction_type": "watched"
+        }).to_list(length=None)
+        
+        watched_content_ids = [i["content_id"] for i in watched_interactions]
+        
+        # Also exclude content user marked as "not_interested"
+        not_interested = await db.user_interactions.find({
+            "user_id": user_id,
+            "interaction_type": "not_interested"
+        }).to_list(length=None)
+        
+        watched_content_ids.extend([i["content_id"] for i in not_interested])
+        
+        # Generate recommendations
+        ml_recommendations = recommendation_engine.generate_recommendations(
+            user_profile, content_df, watched_content_ids, num_recommendations=5
+        )
+        
+        # Convert to API format
+        recommendations = []
+        for rec in ml_recommendations:
+            content = await db.content.find_one({"id": rec["content_id"]})
+            if content:
+                recommendations.append(Recommendation(
+                    title=content["title"],
+                    reason=rec["reasoning"],
+                    poster=content.get("poster"),
+                    imdb_id=content["imdb_id"]
+                ))
+        
+        return recommendations
+        
+    except Exception as e:
+        print(f"Error generating realtime recommendations: {str(e)}")
+        return []
 
 async def get_simple_recommendations_fallback(user_votes: List[Dict]) -> List[Recommendation]:
     """Fallback to simple vote-based recommendations"""
