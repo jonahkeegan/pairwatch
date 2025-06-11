@@ -184,77 +184,227 @@ class MoviePreferenceAPITester:
         
         return False, response
         
-    def test_omdb_api_integration(self):
-        """Test direct OMDB API integration with our API key"""
-        print("\n🔍 Testing OMDB API Integration...")
+    def test_content_interaction(self, content_id, interaction_type):
+        """Test content interaction (watched, want_to_watch, not_interested)"""
+        if not self.auth_token:
+            print("❌ No auth token available for content interaction")
+            self.test_results.append({"name": f"Content Interaction ({interaction_type})", "status": "SKIP", "details": "No auth token available"})
+            return False, {}
         
-        omdb_api_key = "33f2519b"  # Using the provided API key
-        test_movie = "The Shawshank Redemption"
+        data = {
+            "content_id": content_id,
+            "interaction_type": interaction_type,
+            "priority": 3 if interaction_type == "want_to_watch" else None
+        }
         
-        try:
-            # Test direct OMDB API access
-            url = f"http://www.omdbapi.com/?apikey={omdb_api_key}&t={test_movie}&type=movie"
-            response = requests.get(url)
+        success, response = self.run_test(
+            f"Content Interaction ({interaction_type})",
+            "POST",
+            "content/interact",
+            200,
+            data=data,
+            auth=True
+        )
+        
+        if success and response.get('success') == True:
+            print(f"✅ Content interaction '{interaction_type}' recorded successfully")
+            return True, response
+        
+        return False, response
+    
+    def test_get_watchlist(self, watchlist_type="user_defined"):
+        """Test getting user watchlist"""
+        if not self.auth_token:
+            print("❌ No auth token available for watchlist")
+            self.test_results.append({"name": f"Get Watchlist ({watchlist_type})", "status": "SKIP", "details": "No auth token available"})
+            return False, {}
+        
+        success, response = self.run_test(
+            f"Get Watchlist ({watchlist_type})",
+            "GET",
+            f"watchlist/{watchlist_type}",
+            200,
+            auth=True
+        )
+        
+        if success:
+            print(f"✅ Retrieved {watchlist_type} watchlist with {response.get('total_count', 0)} items")
             
-            if response.status_code == 200:
-                data = response.json()
-                if data.get("Response") == "True":
-                    print(f"✅ OMDB API direct access successful")
-                    print(f"  Title: {data.get('Title')}")
-                    print(f"  Year: {data.get('Year')}")
-                    print(f"  IMDB Rating: {data.get('imdbRating')}")
-                    
-                    # Check if poster URL is valid
-                    if data.get("Poster") and data.get("Poster") != "N/A":
-                        poster_url = data.get("Poster")
-                        print(f"  Poster URL: {poster_url}")
-                        
-                        # Try to access the poster image
-                        poster_response = requests.head(poster_url)
-                        if poster_response.status_code == 200:
-                            print(f"  ✅ Poster URL is accessible")
-                            
-                            # Check content type
-                            content_type = poster_response.headers.get('Content-Type', '')
-                            if 'image' in content_type.lower():
-                                print(f"  ✅ Poster URL returns an image ({content_type})")
-                            else:
-                                print(f"  ⚠️ Poster URL does not return an image content type: {content_type}")
-                        else:
-                            print(f"  ❌ Poster URL is not accessible: {poster_response.status_code}")
-                    else:
-                        print(f"  ⚠️ No poster URL available for this movie")
-                    
-                    self.test_results.append({
-                        "name": "OMDB API Integration", 
-                        "status": "PASS", 
-                        "details": f"Successfully retrieved data for '{test_movie}'"
-                    })
-                    return True, data
-                else:
-                    print(f"❌ OMDB API returned an error: {data.get('Error')}")
-                    self.test_results.append({
-                        "name": "OMDB API Integration", 
-                        "status": "FAIL", 
-                        "details": f"API error: {data.get('Error')}"
-                    })
-            else:
-                print(f"❌ OMDB API request failed with status code: {response.status_code}")
-                self.test_results.append({
-                    "name": "OMDB API Integration", 
-                    "status": "FAIL", 
-                    "details": f"Request failed with status code: {response.status_code}"
-                })
+            # Print watchlist items
+            if response.get('items'):
+                for i, item in enumerate(response['items']):
+                    print(f"  {i+1}. {item['content']['title']} ({item['content']['year']})")
+                    if watchlist_type == "algo_predicted" and "reasoning" in item:
+                        print(f"     Reason: {item.get('reasoning')}")
+            
+            return True, response
         
-        except Exception as e:
-            print(f"❌ OMDB API test failed with error: {str(e)}")
-            self.test_results.append({
-                "name": "OMDB API Integration", 
-                "status": "ERROR", 
-                "details": str(e)
-            })
+        return False, response
+    
+    def test_remove_from_watchlist(self, watchlist_id):
+        """Test removing item from watchlist"""
+        if not self.auth_token:
+            print("❌ No auth token available")
+            self.test_results.append({"name": "Remove from Watchlist", "status": "SKIP", "details": "No auth token available"})
+            return False, {}
         
-        return False, {}
+        success, response = self.run_test(
+            "Remove from Watchlist",
+            "DELETE",
+            f"watchlist/{watchlist_id}",
+            200,
+            auth=True
+        )
+        
+        if success and response.get('success') == True:
+            print(f"✅ Item removed from watchlist successfully")
+            return True, response
+        
+        return False, response
+    
+    def test_update_watchlist_priority(self, watchlist_id, priority):
+        """Test updating watchlist item priority"""
+        if not self.auth_token:
+            print("❌ No auth token available")
+            self.test_results.append({"name": "Update Watchlist Priority", "status": "SKIP", "details": "No auth token available"})
+            return False, {}
+        
+        data = {"priority": priority}
+        
+        success, response = self.run_test(
+            "Update Watchlist Priority",
+            "PUT",
+            f"watchlist/{watchlist_id}/priority",
+            200,
+            data=data,
+            auth=True
+        )
+        
+        if success and response.get('success') == True:
+            print(f"✅ Watchlist priority updated to {priority}")
+            return True, response
+        
+        return False, response
+    
+    def test_get_content_user_status(self, content_id, use_auth=True):
+        """Test getting user's interaction status with content"""
+        params = {}
+        
+        if use_auth and self.auth_token:
+            # Use authenticated user
+            auth = True
+        elif self.session_id:
+            # Use guest session
+            params = {"session_id": self.session_id}
+            auth = False
+        else:
+            print("❌ No session ID or auth token available")
+            self.test_results.append({"name": "Get Content User Status", "status": "SKIP", "details": "No session ID or auth token available"})
+            return False, {}
+        
+        success, response = self.run_test(
+            "Get Content User Status",
+            "GET",
+            f"content/{content_id}/user-status",
+            200,
+            auth=auth,
+            params=params
+        )
+        
+        if success:
+            print(f"✅ Content status retrieved:")
+            print(f"  Interactions: {response.get('interactions', [])}")
+            print(f"  In watchlist: {response.get('in_watchlist', False)}")
+            print(f"  Watchlist type: {response.get('watchlist_type')}")
+            print(f"  Has watched: {response.get('has_watched', False)}")
+            print(f"  Wants to watch: {response.get('wants_to_watch', False)}")
+            print(f"  Not interested: {response.get('not_interested', False)}")
+            
+            return True, response
+        
+        return False, response
+    
+    def test_generate_ml_recommendations(self):
+        """Test generating ML-powered recommendations"""
+        if not self.auth_token:
+            print("❌ No auth token available")
+            self.test_results.append({"name": "Generate ML Recommendations", "status": "SKIP", "details": "No auth token available"})
+            return False, {}
+        
+        success, response = self.run_test(
+            "Generate ML Recommendations",
+            "POST",
+            "recommendations/generate",
+            200,
+            data={},
+            auth=True
+        )
+        
+        if success:
+            print(f"✅ ML recommendations generated:")
+            print(f"  Message: {response.get('message')}")
+            print(f"  Recommendations generated: {response.get('recommendations_generated', 0)}")
+            print(f"  User profile strength: {response.get('user_profile_strength', 0)}")
+            
+            if 'recommendation_categories' in response:
+                cats = response['recommendation_categories']
+                print(f"  High confidence: {cats.get('high_confidence', 0)}")
+                print(f"  Medium confidence: {cats.get('medium_confidence', 0)}")
+                print(f"  Exploratory: {cats.get('exploratory', 0)}")
+            
+            return True, response
+        
+        return False, response
+    
+    def test_check_recommendations_refresh(self):
+        """Test checking if recommendations need refresh"""
+        if not self.auth_token:
+            print("❌ No auth token available")
+            self.test_results.append({"name": "Check Recommendations Refresh", "status": "SKIP", "details": "No auth token available"})
+            return False, {}
+        
+        success, response = self.run_test(
+            "Check Recommendations Refresh",
+            "GET",
+            "recommendations/refresh-needed",
+            200,
+            auth=True
+        )
+        
+        if success:
+            print(f"✅ Recommendation refresh status:")
+            print(f"  Refresh needed: {response.get('refresh_needed', False)}")
+            print(f"  Reason: {response.get('reason')}")
+            print(f"  New interactions: {response.get('new_interactions', 0)}")
+            print(f"  Days since last: {response.get('days_since_last', 0)}")
+            
+            return True, response
+        
+        return False, response
+    
+    def test_recommendation_user_action(self, rec_id, action):
+        """Test recording user action on algorithmic recommendation"""
+        if not self.auth_token:
+            print("❌ No auth token available")
+            self.test_results.append({"name": f"Recommendation Action ({action})", "status": "SKIP", "details": "No auth token available"})
+            return False, {}
+        
+        data = {"action": action}
+        
+        success, response = self.run_test(
+            f"Recommendation Action ({action})",
+            "POST",
+            f"recommendations/{rec_id}/action",
+            200,
+            data=data,
+            auth=True
+        )
+        
+        if success and response.get('success') == True:
+            print(f"✅ Recommendation action '{action}' recorded successfully")
+            return True, response
+        
+        return False, response
 
     def test_initialize_content(self):
         """Test content initialization"""
