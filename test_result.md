@@ -144,51 +144,78 @@
 ## frontend:
   - task: "Rename 'View My Recommendations' to 'My Recommendations'"
     implemented: true
-    working: "NA"
+    working: true
     file: "frontend/src/App.js"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Updated button text from 'View My Recommendations' to 'My Recommendations' as requested."
+      - working: true
+        agent: "testing"
+        comment: "Verified that the button text has been correctly updated from 'View My Recommendations' to 'My Recommendations'. Tested with a new user account and confirmed the button appears with the correct text after reaching 10 votes."
 
   - task: "Move 'My Watchlist' button from watchlists page to home page"
     implemented: true
-    working: "NA"
+    working: true
     file: "frontend/src/App.js"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Moved 'My Watchlist' button from header to main area next to 'My Recommendations' button. Only shows for authenticated users with recommendations available."
+      - working: true
+        agent: "testing"
+        comment: "Verified that the 'My Watchlist' button now appears on the home page next to the 'My Recommendations' button after a user has completed 10 votes. Confirmed it only shows for authenticated users with recommendations available."
 
   - task: "Remove dual watchlist interface confusion"
     implemented: true
-    working: "NA"
+    working: true
     file: "frontend/src/App.js"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Simplified watchlist page to only show user-defined watchlist. Removed 'AI Recommendations' tab and related logic. Updated title from 'My Watchlists' to 'My Watchlist'."
+      - working: true
+        agent: "testing"
+        comment: "Verified that the watchlist page has been simplified to only show the user-defined watchlist. Confirmed the 'AI Recommendations' tab has been removed and the title has been updated from 'My Watchlists' to 'My Watchlist'."
 
   - task: "Simplify watchlist interface and remove AI recommendations tab"
     implemented: true
-    working: "NA"
+    working: true
     file: "frontend/src/App.js"
     stuck_count: 0
     priority: "medium"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Removed watchlist type selector, AI recommendations handling, and simplified the interface to focus only on user-defined watchlist items."
+      - working: true
+        agent: "testing"
+        comment: "Verified that the watchlist interface has been simplified with the removal of the watchlist type selector and AI recommendations handling. The interface now focuses only on user-defined watchlist items."
+
+  - task: "Verify vote countdown shows 10 for logged-in users"
+    implemented: true
+    working: true
+    file: "frontend/src/App.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Updated frontend to display the correct 10-vote threshold for recommendations instead of 36."
+      - working: true
+        agent: "testing"
+        comment: "Created a comprehensive test that registers a new user and verifies the vote countdown functionality. Confirmed that for a new logged-in user, the initial countdown shows '10' under 'Until Recommendations'. After submitting 3 votes, verified the countdown decreases to '7'. After submitting 2 more votes (total 5), verified the countdown shows '5'. After submitting 5 more votes (total 10), verified the 'My Recommendations' button appears and the countdown shows '0'. The test passed successfully, confirming that logged-in users see the correct 10-vote threshold instead of 36."
 
 ## metadata:
   created_by: "main_agent"
@@ -217,3 +244,5 @@
     message: "Addressed user feedback about vote countdown displaying wrong threshold. Backend has been verified to correctly return 10-vote threshold in stats endpoint. User should see countdown starting at 10 votes instead of 36 when starting to vote."
   - agent: "testing"
     message: "Specifically tested the stats endpoint for authenticated users as requested. Created a dedicated test that registers a new user, verifies initial stats show votes_until_recommendations = 10, submits votes in increments, and confirms the countdown decreases correctly. After 10 votes, verified votes_until_recommendations = 0 and recommendations_available = true. All tests passed successfully, confirming that new logged-in users see the correct 10-vote threshold instead of 36."
+  - agent: "testing"
+    message: "Completed testing of all frontend tasks. Verified that the 'View My Recommendations' button has been renamed to 'My Recommendations', the 'My Watchlist' button has been moved to the home page, and the watchlist interface has been simplified with the removal of the AI recommendations tab. Also conducted a comprehensive test of the vote countdown functionality for logged-in users, confirming they see the correct 10-vote threshold instead of 36. All tests passed successfully."
