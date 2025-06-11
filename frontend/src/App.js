@@ -548,6 +548,26 @@ function App() {
     }
   };
 
+  const getButtonTooltip = (contentId, interactionType) => {
+    const currentInteraction = getInteractionForContent(contentId);
+    const isActive = currentInteraction === interactionType;
+    
+    if (isActive) {
+      return "Click to deselect";
+    } else {
+      switch (interactionType) {
+        case 'watched':
+          return "Mark as watched";
+        case 'want_to_watch':
+          return "Add to watchlist";
+        case 'not_interested':
+          return "Not interested";
+        default:
+          return "";
+      }
+    }
+  };
+
   const loadWatchlists = async () => {
     if (!user) return;
     
