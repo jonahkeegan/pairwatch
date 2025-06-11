@@ -867,18 +867,39 @@ function App() {
                     
                     <div className="flex justify-between items-center">
                       <div className="flex space-x-2">
-                        <button
-                          onClick={() => handleContentInteraction(item.content.id, 'watched')}
-                          className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm transition-colors"
-                        >
-                          ✓ Watched
-                        </button>
-                        <button
-                          onClick={() => handleContentInteraction(item.content.id, 'not_interested')}
-                          className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded text-sm transition-colors"
-                        >
-                          Not Interested
-                        </button>
+                        {watchlistType === 'algo_predicted' ? (
+                          // AI Recommendations - use special handler with undo modal
+                          <>
+                            <button
+                              onClick={() => handleRecommendationAction(item, 'watched')}
+                              className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm transition-colors"
+                            >
+                              ✓ Watched
+                            </button>
+                            <button
+                              onClick={() => handleRecommendationAction(item, 'not_interested')}
+                              className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded text-sm transition-colors"
+                            >
+                              Not Interested
+                            </button>
+                          </>
+                        ) : (
+                          // User-defined watchlist - use regular handler
+                          <>
+                            <button
+                              onClick={() => handleContentInteraction(item.content.id, 'watched')}
+                              className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm transition-colors"
+                            >
+                              ✓ Watched
+                            </button>
+                            <button
+                              onClick={() => handleContentInteraction(item.content.id, 'not_interested')}
+                              className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded text-sm transition-colors"
+                            >
+                              Not Interested
+                            </button>
+                          </>
+                        )}
                       </div>
                       <div className="text-sm text-gray-300">
                         Priority: {item.priority || 1}/5
