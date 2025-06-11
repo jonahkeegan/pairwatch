@@ -80,6 +80,51 @@ function App() {
     initializeApp();
   }, []);
 
+  // Automatic recommendation polling for authenticated users
+  useEffect(() => {
+    if (!user || !userStats?.recommendations_available) return;
+
+    // Set up automatic polling for recommendations every 2 minutes
+    const pollRecommendations = async () => {
+      try {
+        const response = await axios.get(`${API}/recommendations`);
+        if (response.data && response.data.length > 0) {
+          setRecommendations(response.data);
+        }
+      } catch (error) {
+        console.error('Auto-poll recommendations error:', error);
+      }
+    };
+
+    // Initial load
+    pollRecommendations();
+
+    // Set up polling interval (2 minutes)
+    const interval = setInterval(pollRecommendations, 2 * 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, [user, userStats?.recommendations_available]);
+
+  // Auto-refresh recommendations after user interactions
+  useEffect(() => {
+    if (user && userStats?.recommendations_available) {
+      // Refresh recommendations after a short delay when stats change
+      // This helps capture newly generated recommendations after votes/interactions
+      const timeout = setTimeout(async () => {
+        try {
+          const response = await axios.get(`${API}/recommendations`);
+          if (response.data && response.data.length > 0) {
+            setRecommendations(response.data);
+          }
+        } catch (error) {
+          console.error('Auto-refresh recommendations error:', error);
+        }
+      }, 3000); // 3 second delay to allow background generation
+
+      return () => clearTimeout(timeout);
+    }
+  }, [userStats?.total_votes]); // Trigger when vote count changes
+
   const getCurrentUser = async () => {
     try {
       const response = await axios.get(`${API}/auth/me`);
