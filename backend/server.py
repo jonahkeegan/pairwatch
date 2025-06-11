@@ -14,6 +14,7 @@ import requests
 import random
 import jwt
 import asyncio
+from recommendation_engine import AdvancedRecommendationEngine
 from passlib.context import CryptContext
 import bcrypt
 
