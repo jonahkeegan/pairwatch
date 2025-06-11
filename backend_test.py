@@ -421,6 +421,39 @@ class MoviePreferenceAPITester:
             return True, response
         
         return False, response
+        
+    def test_generate_ml_recommendations(self):
+        """Test generating ML-powered recommendations"""
+        if not self.auth_token:
+            print("❌ No auth token available")
+            self.test_results.append({"name": "Generate ML Recommendations", "status": "SKIP", "details": "No auth token available"})
+            return False, {}
+        
+        success, response = self.run_test(
+            "Generate ML Recommendations",
+            "POST",
+            "recommendations/generate",
+            200,
+            data={},
+            auth=True
+        )
+        
+        if success:
+            print(f"✅ ML Recommendations generated:")
+            print(f"  Message: {response.get('message', '')}")
+            print(f"  Recommendations generated: {response.get('recommendations_generated', 0)}")
+            print(f"  User profile strength: {response.get('user_profile_strength', 0)}")
+            
+            # Check recommendation categories
+            if 'recommendation_categories' in response:
+                categories = response['recommendation_categories']
+                print(f"  High confidence recommendations: {categories.get('high_confidence', 0)}")
+                print(f"  Medium confidence recommendations: {categories.get('medium_confidence', 0)}")
+                print(f"  Exploratory recommendations: {categories.get('exploratory', 0)}")
+            
+            return True, response
+        
+        return False, response
     
     def test_recommendation_user_action(self, rec_id, action):
         """Test recording user action on algorithmic recommendation"""
