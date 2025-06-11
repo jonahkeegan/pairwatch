@@ -230,7 +230,7 @@ function App() {
         setUserStats(prev => ({
           ...prev,
           total_votes: voteResponse.data.total_votes,
-          votes_until_recommendations: Math.max(0, 36 - voteResponse.data.total_votes),
+          votes_until_recommendations: Math.max(0, 10 - voteResponse.data.total_votes),
           recommendations_available: voteResponse.data.recommendations_available
         }));
       }
