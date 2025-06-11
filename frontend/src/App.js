@@ -490,29 +490,60 @@ function App() {
     const currentInteraction = getInteractionForContent(contentId);
     const isActive = currentInteraction === interactionType;
     
-    const baseStyle = "px-3 py-1 rounded text-xs transition-colors";
+    const baseStyle = "px-3 py-1 rounded text-xs transition-all duration-200 cursor-pointer select-none";
     
     if (isActive) {
+      // Active/selected state with hover effect to indicate it can be deselected
       switch (interactionType) {
         case 'watched':
-          return `${baseStyle} bg-green-700 text-white`;
+          return `${baseStyle} bg-green-700 text-white border-2 border-green-500 hover:bg-green-600 hover:border-green-400 shadow-lg`;
         case 'want_to_watch':
-          return `${baseStyle} bg-blue-700 text-white`;
+          return `${baseStyle} bg-blue-700 text-white border-2 border-blue-500 hover:bg-blue-600 hover:border-blue-400 shadow-lg`;
         case 'not_interested':
-          return `${baseStyle} bg-gray-700 text-white`;
+          return `${baseStyle} bg-gray-700 text-white border-2 border-gray-500 hover:bg-gray-600 hover:border-gray-400 shadow-lg`;
         default:
           return baseStyle;
       }
     } else {
+      // Inactive/unselected state
       switch (interactionType) {
         case 'watched':
-          return `${baseStyle} bg-green-600 hover:bg-green-700 text-white`;
+          return `${baseStyle} bg-green-600 hover:bg-green-700 text-white border-2 border-transparent hover:border-green-400`;
         case 'want_to_watch':
-          return `${baseStyle} bg-blue-600 hover:bg-blue-700 text-white`;
+          return `${baseStyle} bg-blue-600 hover:bg-blue-700 text-white border-2 border-transparent hover:border-blue-400`;
         case 'not_interested':
-          return `${baseStyle} bg-gray-600 hover:bg-gray-700 text-white`;
+          return `${baseStyle} bg-gray-600 hover:bg-gray-700 text-white border-2 border-transparent hover:border-gray-400`;
         default:
           return baseStyle;
+      }
+    }
+  };
+
+  const getButtonText = (contentId, interactionType) => {
+    const currentInteraction = getInteractionForContent(contentId);
+    const isActive = currentInteraction === interactionType;
+    
+    if (isActive) {
+      switch (interactionType) {
+        case 'watched':
+          return '✅ Watched (click to undo)';
+        case 'want_to_watch':
+          return '📋 In Watchlist (click to undo)';
+        case 'not_interested':
+          return '🚫 Passed (click to undo)';
+        default:
+          return '';
+      }
+    } else {
+      switch (interactionType) {
+        case 'watched':
+          return '✓ Watched';
+        case 'want_to_watch':
+          return '📝 Want to Watch';
+        case 'not_interested':
+          return '❌ Pass';
+        default:
+          return '';
       }
     }
   };
