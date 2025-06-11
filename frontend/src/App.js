@@ -246,7 +246,7 @@ function App() {
           setUserStats(prev => ({ ...prev, recommendations_available: true }));
         }
       } else {
-        // For guests, use original 36-vote threshold
+        // For guests, use original 10-vote threshold
         if (voteResponse.data.recommendations_available && !showRecommendations) {
           const params = {};
           if (!user && sessionId) {
