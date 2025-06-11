@@ -184,18 +184,25 @@ class MoviePreferenceAPITester:
         
         return False, response
         
-    def test_content_interaction(self, content_id, interaction_type):
+    def test_content_interaction(self, content_id, interaction_type, use_auth=True, session_id=None):
         """Test content interaction (watched, want_to_watch, not_interested)"""
-        if not self.auth_token:
-            print("❌ No auth token available for content interaction")
-            self.test_results.append({"name": f"Content Interaction ({interaction_type})", "status": "SKIP", "details": "No auth token available"})
-            return False, {}
-        
         data = {
             "content_id": content_id,
             "interaction_type": interaction_type,
             "priority": 3 if interaction_type == "want_to_watch" else None
         }
+        
+        if use_auth and self.auth_token:
+            # Use authenticated user
+            auth = True
+        elif session_id or self.session_id:
+            # Use guest session
+            data["session_id"] = session_id or self.session_id
+            auth = False
+        else:
+            print("❌ No session ID or auth token available for content interaction")
+            self.test_results.append({"name": f"Content Interaction ({interaction_type})", "status": "SKIP", "details": "No session ID or auth token available"})
+            return False, {}
         
         success, response = self.run_test(
             f"Content Interaction ({interaction_type})",
@@ -203,7 +210,7 @@ class MoviePreferenceAPITester:
             "content/interact",
             200,
             data=data,
-            auth=True
+            auth=auth
         )
         
         if success and response.get('success') == True:
