@@ -1037,8 +1037,8 @@ async def get_user_stats(
         "total_votes": total_votes,
         "movie_votes": movie_votes,
         "series_votes": series_votes,
-        "votes_until_recommendations": max(0, 36 - total_votes),
-        "recommendations_available": total_votes >= 36,
+        "votes_until_recommendations": max(0, 10 - total_votes),
+        "recommendations_available": total_votes >= 10,
         "user_authenticated": current_user is not None
     }
 
