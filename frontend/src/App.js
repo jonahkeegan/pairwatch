@@ -318,6 +318,104 @@ function App() {
     setSelectedPoster(null);
   };
 
+  const handleContentInteraction = async (contentId, interactionType, priority = 1) => {
+    if (!user && interactionType !== 'not_interested') {
+      alert('Please login to use this feature');
+      return;
+    }
+
+    try {
+      const data = {
+        content_id: contentId,
+        interaction_type: interactionType,
+        priority: priority
+      };
+
+      if (!user) {
+        data.session_id = sessionId;
+      }
+
+      await axios.post(`${API}/content/interact`, data);
+      
+      // Refresh watchlists if needed
+      if (user) {
+        await loadWatchlists();
+      }
+      
+      // Show feedback
+      const messages = {
+        'watched': 'Marked as watched!',
+        'want_to_watch': 'Added to your watchlist!',
+        'not_interested': 'Noted - we won\'t recommend similar content'
+      };
+      
+      // You could add a toast notification here
+      console.log(messages[interactionType]);
+      
+    } catch (error) {
+      console.error('Content interaction error:', error);
+      alert('Failed to record interaction');
+    }
+  };
+
+  const loadWatchlists = async () => {
+    if (!user) return;
+    
+    try {
+      const [userResponse, algoResponse] = await Promise.all([
+        axios.get(`${API}/watchlist/user_defined`),
+        axios.get(`${API}/watchlist/algo_predicted`)
+      ]);
+      
+      setUserWatchlist(userResponse.data.items);
+      setAlgoWatchlist(algoResponse.data.items);
+    } catch (error) {
+      console.error('Watchlist loading error:', error);
+    }
+  };
+
+  const generateRecommendations = async () => {
+    if (!user) {
+      alert('Please login to get personalized recommendations');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await axios.post(`${API}/recommendations/generate`);
+      
+      alert(response.data.message);
+      await loadWatchlists(); // Refresh to show new recommendations
+      
+    } catch (error) {
+      console.error('Recommendation generation error:', error);
+      alert(error.response?.data?.detail || 'Failed to generate recommendations');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const removeFromWatchlist = async (watchlistId) => {
+    try {
+      await axios.delete(`${API}/watchlist/${watchlistId}`);
+      await loadWatchlists();
+    } catch (error) {
+      console.error('Remove from watchlist error:', error);
+    }
+  };
+
+  const toggleWatchlist = async () => {
+    if (!user) {
+      alert('Please login to view your watchlists');
+      return;
+    }
+    
+    if (!showWatchlist) {
+      await loadWatchlists();
+    }
+    setShowWatchlist(!showWatchlist);
+  };
+
   // Poster Modal
   if (showPosterModal && selectedPoster) {
     return (
