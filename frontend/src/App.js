@@ -338,6 +338,12 @@ function App() {
 
       await axios.post(`${API}/content/interact`, data);
       
+      // Update local interaction state for immediate feedback
+      setContentInteractions(prev => ({
+        ...prev,
+        [contentId]: interactionType
+      }));
+      
       // Refresh watchlists if needed
       if (user) {
         await loadWatchlists();
@@ -345,17 +351,52 @@ function App() {
       
       // Show feedback
       const messages = {
-        'watched': 'Marked as watched!',
-        'want_to_watch': 'Added to your watchlist!',
-        'not_interested': 'Noted - we won\'t recommend similar content'
+        'watched': '✅ Marked as watched!',
+        'want_to_watch': '📝 Added to your watchlist!',
+        'not_interested': '❌ Noted - we won\'t recommend similar content'
       };
       
-      // You could add a toast notification here
+      // You could add a toast notification here instead of console.log
       console.log(messages[interactionType]);
       
     } catch (error) {
       console.error('Content interaction error:', error);
       alert('Failed to record interaction');
+    }
+  };
+
+  const getInteractionForContent = (contentId) => {
+    return contentInteractions[contentId] || null;
+  };
+
+  const getButtonStyle = (contentId, interactionType) => {
+    const currentInteraction = getInteractionForContent(contentId);
+    const isActive = currentInteraction === interactionType;
+    
+    const baseStyle = "px-3 py-1 rounded text-xs transition-colors";
+    
+    if (isActive) {
+      switch (interactionType) {
+        case 'watched':
+          return `${baseStyle} bg-green-700 text-white`;
+        case 'want_to_watch':
+          return `${baseStyle} bg-blue-700 text-white`;
+        case 'not_interested':
+          return `${baseStyle} bg-gray-700 text-white`;
+        default:
+          return baseStyle;
+      }
+    } else {
+      switch (interactionType) {
+        case 'watched':
+          return `${baseStyle} bg-green-600 hover:bg-green-700 text-white`;
+        case 'want_to_watch':
+          return `${baseStyle} bg-blue-600 hover:bg-blue-700 text-white`;
+        case 'not_interested':
+          return `${baseStyle} bg-gray-600 hover:bg-gray-700 text-white`;
+        default:
+          return baseStyle;
+      }
     }
   };
 
