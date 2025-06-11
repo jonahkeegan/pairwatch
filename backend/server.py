@@ -1095,7 +1095,9 @@ async def auto_generate_ai_recommendations(user_id: str):
         print(f"Auto-generated {len(ml_recommendations)} recommendations for user {user_id}")
         
     except Exception as e:
-        print(f"Error auto-generating recommendations: {str(e)}")
+        print(f"Error auto-generating recommendations for user {user_id}: {str(e)}")
+        import traceback
+        traceback.print_exc()
 
 async def generate_realtime_recommendations(user_id: str) -> List[Recommendation]:
     """Generate recommendations in real-time as fallback"""
