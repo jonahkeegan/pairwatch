@@ -998,7 +998,7 @@ function App() {
         <div className="max-w-6xl mx-auto">
           <div className="bg-white bg-opacity-10 backdrop-blur-lg rounded-xl p-8">
             <div className="flex justify-between items-center mb-8">
-              <h1 className="text-4xl font-bold text-white">My Watchlists</h1>
+              <h1 className="text-4xl font-bold text-white">My Watchlist</h1>
               <button
                 onClick={toggleWatchlist}
                 className="text-blue-300 hover:text-blue-200"
