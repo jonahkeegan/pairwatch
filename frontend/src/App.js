@@ -28,7 +28,7 @@ function App() {
   const [userWatchlist, setUserWatchlist] = useState([]);
   const [algoWatchlist, setAlgoWatchlist] = useState([]);
   const [showWatchlist, setShowWatchlist] = useState(false);
-  const [watchlistType, setWatchlistType] = useState('user_defined'); // 'user_defined' or 'algo_predicted'
+  const [contentInteractions, setContentInteractions] = useState({}); // Track interactions per content ID
 
   // Auth form state
   const [authForm, setAuthForm] = useState({
