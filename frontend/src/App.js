@@ -1022,30 +1022,30 @@ function App() {
                       e.stopPropagation();
                       handleContentInteraction(currentPair.item1.id, 'watched');
                     }}
-                    className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs transition-colors"
+                    className={getButtonStyle(currentPair.item1.id, 'watched')}
                     title="Mark as watched"
                   >
-                    ✓ Watched
+                    {getInteractionForContent(currentPair.item1.id) === 'watched' ? '✅ Watched' : '✓ Watched'}
                   </button>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       handleContentInteraction(currentPair.item1.id, 'want_to_watch');
                     }}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs transition-colors"
+                    className={getButtonStyle(currentPair.item1.id, 'want_to_watch')}
                     title="Add to watchlist"
                   >
-                    📝 Want to Watch
+                    {getInteractionForContent(currentPair.item1.id) === 'want_to_watch' ? '📋 In Watchlist' : '📝 Want to Watch'}
                   </button>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       handleContentInteraction(currentPair.item1.id, 'not_interested');
                     }}
-                    className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded text-xs transition-colors"
+                    className={getButtonStyle(currentPair.item1.id, 'not_interested')}
                     title="Not interested"
                   >
-                    ❌ Pass
+                    {getInteractionForContent(currentPair.item1.id) === 'not_interested' ? '🚫 Passed' : '❌ Pass'}
                   </button>
                 </div>
               </div>
