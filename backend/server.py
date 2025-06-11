@@ -899,9 +899,6 @@ async def get_recommendations(
     # For authenticated users, use advanced ML recommendations with auto-generation
     if current_user:
         try:
-            # Check if we need to refresh recommendations automatically
-            should_refresh = await check_and_auto_refresh_recommendations(current_user.id)
-            
             # Get user votes to determine if they have enough data
             user_votes = await db.votes.find({"user_id": current_user.id}).to_list(length=None)
             
@@ -912,23 +909,30 @@ async def get_recommendations(
             # Try to get existing AI recommendations first
             existing_recommendations = await get_stored_ai_recommendations(current_user.id)
             
-            # If we have valid stored recommendations and don't need refresh, return them
-            if existing_recommendations and not should_refresh:
-                return existing_recommendations
+            # If we have existing recommendations, check if they need refresh
+            if existing_recommendations:
+                should_refresh = await check_and_auto_refresh_recommendations(current_user.id)
+                if not should_refresh:
+                    return existing_recommendations
             
-            # Generate new AI recommendations automatically
+            # Generate new AI recommendations (either first time or refresh needed)
+            print(f"Generating recommendations for user {current_user.id} with {len(user_votes)} votes")
             await auto_generate_ai_recommendations(current_user.id)
             
             # Get the newly generated recommendations
             new_recommendations = await get_stored_ai_recommendations(current_user.id)
             if new_recommendations:
+                print(f"Successfully retrieved {len(new_recommendations)} stored recommendations for user {current_user.id}")
                 return new_recommendations
             
             # Fallback to real-time generation if storage fails
+            print(f"Storage failed, falling back to real-time generation for user {current_user.id}")
             return await generate_realtime_recommendations(current_user.id)
             
         except Exception as e:
             print(f"Error in AI recommendations: {str(e)}")
+            import traceback
+            traceback.print_exc()
             # Fall back to simple recommendations on error
             user_votes = await db.votes.find({"user_id": current_user.id}).to_list(length=None)
             return await get_simple_recommendations_fallback(user_votes)
