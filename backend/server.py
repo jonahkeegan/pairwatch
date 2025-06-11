@@ -840,7 +840,7 @@ async def submit_vote(
         return {
             "vote_recorded": True,
             "total_votes": total_votes,
-            "recommendations_available": total_votes >= 36,
+            "recommendations_available": total_votes >= 10,
             "user_authenticated": True
         }
     else:
