@@ -424,15 +424,23 @@ function App() {
         // Deselect: remove the interaction
         console.log(`Deselecting ${interactionType} for content ${contentId}`);
         
+        // If it's a pass timer, cancel it
+        if (interactionType === 'not_interested' && passTimers[contentId]) {
+          clearTimeout(passTimers[contentId].timeoutId);
+          setPassTimers(prev => {
+            const updated = { ...prev };
+            delete updated[contentId];
+            return updated;
+          });
+          console.log(`Cancelled pass timer for content ${contentId}`);
+        }
+        
         // Remove from local state immediately for instant feedback
         setContentInteractions(prev => {
           const updated = { ...prev };
           delete updated[contentId];
           return updated;
         });
-        
-        // TODO: Add backend endpoint to remove interaction
-        // For now, we'll just handle it locally
         
         return;
       }
@@ -455,6 +463,11 @@ function App() {
 
       await axios.post(`${API}/content/interact`, data);
       
+      // Special handling for "not_interested" (Pass) - start countdown timer
+      if (interactionType === 'not_interested') {
+        startPassCountdown(contentId);
+      }
+      
       // Refresh watchlists if needed
       if (user) {
         await loadWatchlists();
@@ -464,7 +477,7 @@ function App() {
       const messages = {
         'watched': '✅ Marked as watched!',
         'want_to_watch': '📝 Added to your watchlist!',
-        'not_interested': '❌ Noted - we won\'t recommend similar content'
+        'not_interested': '❌ Starting 5-second countdown to replace tile...'
       };
       
       console.log(messages[interactionType]);
@@ -480,6 +493,102 @@ function App() {
       });
       
       alert('Failed to record interaction');
+    }
+  };
+
+  const startPassCountdown = (contentId) => {
+    // Clear any existing timer for this content
+    if (passTimers[contentId]) {
+      clearTimeout(passTimers[contentId].timeoutId);
+    }
+
+    let countdown = 5;
+    setPassTimers(prev => ({
+      ...prev,
+      [contentId]: { countdown, timeoutId: null, intervalId: null }
+    }));
+
+    // Update countdown every second
+    const intervalId = setInterval(() => {
+      countdown--;
+      setPassTimers(prev => ({
+        ...prev,
+        [contentId]: { ...prev[contentId], countdown }
+      }));
+
+      if (countdown <= 0) {
+        clearInterval(intervalId);
+        replaceTile(contentId);
+      }
+    }, 1000);
+
+    // Set the main timeout to replace the tile after 5 seconds
+    const timeoutId = setTimeout(() => {
+      clearInterval(intervalId);
+      replaceTile(contentId);
+    }, 5000);
+
+    // Update the timer state with both IDs
+    setPassTimers(prev => ({
+      ...prev,
+      [contentId]: { countdown, timeoutId, intervalId }
+    }));
+  };
+
+  const replaceTile = async (passedContentId) => {
+    try {
+      console.log(`Replacing tile for passed content: ${passedContentId}`);
+      
+      // Determine which content should remain (the one that wasn't passed)
+      let remainingContentId;
+      if (currentPair.item1.id === passedContentId) {
+        remainingContentId = currentPair.item2.id;
+      } else if (currentPair.item2.id === passedContentId) {
+        remainingContentId = currentPair.item1.id;
+      } else {
+        console.error('Passed content ID not found in current pair');
+        return;
+      }
+      
+      // Get replacement pair
+      const params = {};
+      if (!user && sessionId) {
+        params.session_id = sessionId;
+      }
+      
+      const response = await axios.get(`${API}/voting-pair-replacement/${remainingContentId}`, { params });
+      const newPair = response.data;
+      
+      // Update the current pair
+      setCurrentPair(newPair);
+      
+      // Clear the timer and interaction for the passed content
+      setPassTimers(prev => {
+        const updated = { ...prev };
+        delete updated[passedContentId];
+        return updated;
+      });
+      
+      setContentInteractions(prev => {
+        const updated = { ...prev };
+        delete updated[passedContentId];
+        return updated;
+      });
+      
+      // Load interactions for the new pair
+      await loadContentInteractions([newPair.item1.id, newPair.item2.id], sessionId);
+      
+      console.log('✅ Tile replacement completed');
+      
+    } catch (error) {
+      console.error('Tile replacement error:', error);
+      
+      // Clear the timer even if replacement failed
+      setPassTimers(prev => {
+        const updated = { ...prev };
+        delete updated[passedContentId];
+        return updated;
+      });
     }
   };
 
