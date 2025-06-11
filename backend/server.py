@@ -672,7 +672,79 @@ async def get_session(session_id: str) -> UserSession:
         raise HTTPException(status_code=404, detail="Session not found")
     return UserSession(**session_data)
 
-@api_router.get("/voting-pair")
+@api_router.get("/voting-pair-replacement/{content_id}")
+async def get_replacement_voting_pair(
+    content_id: str,
+    session_id: Optional[str] = Query(None),
+    current_user: Optional[User] = Depends(get_current_user)
+) -> VotePair:
+    """Get a replacement item for voting pair (keeping one item, replacing the other)"""
+    # Determine user identifier
+    user_identifier = None
+    if current_user:
+        user_identifier = ("user", current_user.id)
+    elif session_id:
+        # Verify session exists
+        session = await db.sessions.find_one({"session_id": session_id})
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found")
+        user_identifier = ("session", session_id)
+    else:
+        raise HTTPException(status_code=400, detail="Either login or provide session_id")
+    
+    # Get the content item that should remain
+    remaining_content = await db.content.find_one({"id": content_id})
+    if not remaining_content:
+        raise HTTPException(status_code=404, detail="Content not found")
+    
+    # Get items of the same type as the remaining content
+    content_type = remaining_content["content_type"]
+    items = await db.content.find({
+        "content_type": content_type,
+        "id": {"$ne": content_id}  # Exclude the remaining content
+    }).to_list(length=None)
+    
+    if len(items) < 1:
+        raise HTTPException(status_code=400, detail=f"Not enough {content_type} content available for replacement")
+    
+    # Get user's vote history to avoid showing same pairs
+    if user_identifier[0] == "user":
+        user_votes = await db.votes.find({"user_id": user_identifier[1]}).to_list(length=None)
+    else:
+        user_votes = await db.votes.find({"session_id": user_identifier[1]}).to_list(length=None)
+    
+    voted_pairs = set()
+    for vote in user_votes:
+        pair = frozenset([vote["winner_id"], vote["loser_id"]])
+        voted_pairs.add(pair)
+    
+    # Find an unvoted pair with the remaining content
+    max_attempts = 50
+    for _ in range(max_attempts):
+        replacement_item = random.choice(items)
+        item_ids = frozenset([content_id, replacement_item["id"]])
+        if item_ids not in voted_pairs:
+            # Randomly decide which position the remaining content should be in
+            if random.choice([True, False]):
+                return VotePair(
+                    item1=ContentItem(**remaining_content),
+                    item2=ContentItem(**replacement_item),
+                    content_type=content_type
+                )
+            else:
+                return VotePair(
+                    item1=ContentItem(**replacement_item),
+                    item2=ContentItem(**remaining_content),
+                    content_type=content_type
+                )
+    
+    # If all pairs voted, return random replacement anyway
+    replacement_item = random.choice(items)
+    return VotePair(
+        item1=ContentItem(**remaining_content),
+        item2=ContentItem(**replacement_item),
+        content_type=content_type
+    )
 async def get_voting_pair(
     session_id: Optional[str] = Query(None),
     current_user: Optional[User] = Depends(get_current_user)
