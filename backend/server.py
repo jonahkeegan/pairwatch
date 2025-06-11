@@ -878,22 +878,109 @@ async def get_recommendations(
     session_id: Optional[str] = Query(None),
     current_user: Optional[User] = Depends(get_current_user)
 ) -> List[Recommendation]:
-    """Get recommendations based on voting history"""
-    # Get user votes
+    """Get AI-powered recommendations based on user preferences"""
+    # For authenticated users, use advanced ML recommendations
     if current_user:
-        user_votes = await db.votes.find({"user_id": current_user.id}).to_list(length=None)
-        total_votes = len(user_votes)
+        try:
+            # Get all content for feature extraction
+            all_content = await db.content.find().to_list(length=None)
+            
+            if not all_content:
+                return []  # Return empty list if no content
+            
+            # Extract content features
+            content_df = recommendation_engine.extract_content_features(all_content)
+            
+            # Build user profile from interactions
+            user_interactions = await db.user_interactions.find({"user_id": current_user.id}).to_list(length=None)
+            
+            # Also include vote data as interactions
+            user_votes = await db.votes.find({"user_id": current_user.id}).to_list(length=None)
+            
+            # Convert votes to interactions
+            for vote in user_votes:
+                # Add winner interaction
+                user_interactions.append({
+                    "content_id": vote["winner_id"],
+                    "interaction_type": "vote_winner",
+                    "created_at": vote["created_at"]
+                })
+                # Add loser interaction  
+                user_interactions.append({
+                    "content_id": vote["loser_id"],
+                    "interaction_type": "vote_loser",
+                    "created_at": vote["created_at"]
+                })
+            
+            # Add content details to interactions
+            for interaction in user_interactions:
+                content = await db.content.find_one({"id": interaction["content_id"]})
+                if content:
+                    interaction["content"] = content
+            
+            # If user has insufficient data, fall back to simple recommendations
+            if len(user_votes) < 10:
+                return await get_simple_recommendations_fallback(user_votes)
+            
+            # Build user profile
+            user_profile = recommendation_engine.build_user_profile(user_interactions)
+            
+            # Get watched content IDs
+            watched_interactions = await db.user_interactions.find({
+                "user_id": current_user.id,
+                "interaction_type": "watched"
+            }).to_list(length=None)
+            
+            watched_content_ids = [i["content_id"] for i in watched_interactions]
+            
+            # Also exclude content user marked as "not_interested"
+            not_interested = await db.user_interactions.find({
+                "user_id": current_user.id,
+                "interaction_type": "not_interested"
+            }).to_list(length=None)
+            
+            watched_content_ids.extend([i["content_id"] for i in not_interested])
+            
+            # Generate recommendations
+            ml_recommendations = recommendation_engine.generate_recommendations(
+                user_profile, content_df, watched_content_ids, num_recommendations=5
+            )
+            
+            # Convert to API format
+            recommendations = []
+            for rec in ml_recommendations:
+                content = await db.content.find_one({"id": rec["content_id"]})
+                if content:
+                    recommendations.append(Recommendation(
+                        title=content["title"],
+                        reason=rec["reasoning"],
+                        poster=content.get("poster"),
+                        imdb_id=content["imdb_id"]
+                    ))
+            
+            return recommendations
+            
+        except Exception as e:
+            # Fall back to simple recommendations on error
+            user_votes = await db.votes.find({"user_id": current_user.id}).to_list(length=None)
+            return await get_simple_recommendations_fallback(user_votes)
+    
+    # For guest users, use simple vote-based recommendations
     elif session_id:
         session = await db.sessions.find_one({"session_id": session_id})
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
         user_votes = await db.votes.find({"session_id": session_id}).to_list(length=None)
-        total_votes = len(user_votes)
+        return await get_simple_recommendations_fallback(user_votes)
     else:
         raise HTTPException(status_code=400, detail="Either login or provide session_id")
+
+async def get_simple_recommendations_fallback(user_votes: List[Dict]) -> List[Recommendation]:
+    """Fallback to simple vote-based recommendations"""
+    total_votes = len(user_votes)
     
-    if total_votes < 36:
-        raise HTTPException(status_code=400, detail="Need at least 36 votes for recommendations")
+    if total_votes < 10:  # Reduced from 36 for better UX
+        return []
     
     # Count wins for each item
     win_counts = {}
