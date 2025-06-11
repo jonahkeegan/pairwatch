@@ -1465,7 +1465,7 @@ function App() {
                       handleContentInteraction(currentPair.item2.id, 'watched');
                     }}
                     className={getButtonStyle(currentPair.item2.id, 'watched')}
-                    title={getInteractionForContent(currentPair.item2.id) === 'watched' ? "Click to deselect" : "Mark as watched"}
+                    title={getButtonTooltip(currentPair.item2.id, 'watched')}
                   >
                     {getButtonText(currentPair.item2.id, 'watched')}
                   </button>
@@ -1475,7 +1475,7 @@ function App() {
                       handleContentInteraction(currentPair.item2.id, 'want_to_watch');
                     }}
                     className={getButtonStyle(currentPair.item2.id, 'want_to_watch')}
-                    title={getInteractionForContent(currentPair.item2.id) === 'want_to_watch' ? "Click to deselect" : "Add to watchlist"}
+                    title={getButtonTooltip(currentPair.item2.id, 'want_to_watch')}
                   >
                     {getButtonText(currentPair.item2.id, 'want_to_watch')}
                   </button>
@@ -1485,7 +1485,7 @@ function App() {
                       handleContentInteraction(currentPair.item2.id, 'not_interested');
                     }}
                     className={getButtonStyle(currentPair.item2.id, 'not_interested')}
-                    title={getInteractionForContent(currentPair.item2.id) === 'not_interested' ? "Click to deselect" : "Not interested"}
+                    title={getButtonTooltip(currentPair.item2.id, 'not_interested')}
                   >
                     {getButtonText(currentPair.item2.id, 'not_interested')}
                   </button>
