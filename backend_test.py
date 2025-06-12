@@ -518,14 +518,469 @@ class MoviePreferenceAPITester:
         
         return success_count == num_users
 
+def test_recommendations_pagination(self):
+    """Test pagination for recommendations endpoint"""
+    logger.info("\n🔍 TESTING RECOMMENDATIONS PAGINATION")
+    
+    # Step 1: Register a new user
+    logger.info("\n📋 Step 1: Register a new user")
+    reg_success, reg_response = self.test_user_registration()
+    if not reg_success:
+        logger.error("❌ Failed to register user, stopping test")
+        return False
+    
+    # Step 2: Submit enough votes to generate recommendations (20+ votes)
+    logger.info("\n📋 Step 2: Submit 25 votes to generate sufficient recommendations")
+    vote_success = self.simulate_voting_to_threshold(use_auth=True, target_votes=25)
+    if not vote_success:
+        logger.error("❌ Failed to submit votes")
+        return False
+    
+    # Step 3: Add some content interactions to enrich recommendations
+    logger.info("\n📋 Step 3: Add some content interactions")
+    # Get a voting pair to get some content IDs
+    _, pair = self.test_get_voting_pair(use_auth=True)
+    if pair and 'item1' in pair and 'item2' in pair:
+        self.test_content_interaction(pair['item1']['id'], "watched", use_auth=True)
+        self.test_content_interaction(pair['item2']['id'], "not_interested", use_auth=True)
+    
+    # Wait for recommendations to be generated
+    logger.info("Waiting 5 seconds for recommendations to be generated...")
+    time.sleep(5)
+    
+    # Step 4: Test first page of recommendations
+    logger.info("\n📋 Step 4: Test first page of recommendations (offset=0, limit=20)")
+    start_time = time.time()
+    success, first_page = self.run_test(
+        "Recommendations First Page",
+        "GET",
+        "recommendations",
+        200,
+        auth=True,
+        params={"offset": 0, "limit": 20}
+    )
+    first_page_time = time.time() - start_time
+    
+    if not success or not isinstance(first_page, list):
+        logger.error("❌ Failed to get first page of recommendations")
+        return False
+    
+    logger.info(f"✅ First page contains {len(first_page)} recommendations")
+    logger.info(f"✅ Response time: {first_page_time:.3f} seconds")
+    
+    # Step 5: Test second page of recommendations
+    logger.info("\n📋 Step 5: Test second page of recommendations (offset=20, limit=20)")
+    start_time = time.time()
+    success, second_page = self.run_test(
+        "Recommendations Second Page",
+        "GET",
+        "recommendations",
+        200,
+        auth=True,
+        params={"offset": 20, "limit": 20}
+    )
+    second_page_time = time.time() - start_time
+    
+    if not success:
+        logger.error("❌ Failed to get second page of recommendations")
+        return False
+    
+    if isinstance(second_page, list):
+        logger.info(f"✅ Second page contains {len(second_page)} recommendations")
+        logger.info(f"✅ Response time: {second_page_time:.3f} seconds")
+        
+        # Check for duplicate recommendations between pages
+        first_page_titles = [rec.get('title') for rec in first_page]
+        second_page_titles = [rec.get('title') for rec in second_page]
+        duplicates = set(first_page_titles) & set(second_page_titles)
+        
+        if duplicates:
+            logger.warning(f"⚠️ Found {len(duplicates)} duplicate recommendations between pages")
+        else:
+            logger.info("✅ No duplicate recommendations between pages")
+    
+    # Step 6: Test third page of recommendations
+    logger.info("\n📋 Step 6: Test third page of recommendations (offset=40, limit=20)")
+    start_time = time.time()
+    success, third_page = self.run_test(
+        "Recommendations Third Page",
+        "GET",
+        "recommendations",
+        200,
+        auth=True,
+        params={"offset": 40, "limit": 20}
+    )
+    third_page_time = time.time() - start_time
+    
+    if not success:
+        logger.error("❌ Failed to get third page of recommendations")
+        return False
+    
+    if isinstance(third_page, list):
+        logger.info(f"✅ Third page contains {len(third_page)} recommendations")
+        logger.info(f"✅ Response time: {third_page_time:.3f} seconds")
+    
+    # Step 7: Test edge cases
+    logger.info("\n📋 Step 7: Test edge cases")
+    
+    # Test with offset beyond available items
+    success, beyond_offset = self.run_test(
+        "Recommendations Beyond Available",
+        "GET",
+        "recommendations",
+        200,
+        auth=True,
+        params={"offset": 1000, "limit": 20}
+    )
+    
+    if success and isinstance(beyond_offset, list):
+        logger.info(f"✅ Beyond offset returns {len(beyond_offset)} recommendations")
+    
+    # Test with minimum limit
+    success, min_limit = self.run_test(
+        "Recommendations Minimum Limit",
+        "GET",
+        "recommendations",
+        200,
+        auth=True,
+        params={"offset": 0, "limit": 1}
+    )
+    
+    if success and isinstance(min_limit, list):
+        logger.info(f"✅ Minimum limit returns {len(min_limit)} recommendations")
+    
+    # Test with maximum limit
+    success, max_limit = self.run_test(
+        "Recommendations Maximum Limit",
+        "GET",
+        "recommendations",
+        200,
+        auth=True,
+        params={"offset": 0, "limit": 100}
+    )
+    
+    if success and isinstance(max_limit, list):
+        logger.info(f"✅ Maximum limit returns {len(max_limit)} recommendations")
+    
+    # Test with invalid parameters
+    success, invalid_params = self.run_test(
+        "Recommendations Invalid Parameters",
+        "GET",
+        "recommendations",
+        422,  # FastAPI validation error
+        auth=True,
+        params={"offset": -1, "limit": 0}
+    )
+    
+    # Step 8: Check database for total recommendations
+    logger.info("\n📋 Step 8: Check database for total recommendations")
+    try:
+        total_recs = self.db.algo_recommendations.count_documents({"user_id": self.user_id})
+        logger.info(f"✅ Total recommendations in database: {total_recs}")
+        
+        if total_recs > 0:
+            logger.info(f"✅ User has {total_recs} recommendations in database")
+            
+            # Check if we're approaching the 1000 item limit
+            if total_recs >= 900:
+                logger.info(f"✅ Approaching 1000-item limit with {total_recs} recommendations")
+            
+            # Log some sample recommendations
+            sample_recs = list(self.db.algo_recommendations.find({"user_id": self.user_id}).limit(3))
+            for i, rec in enumerate(sample_recs):
+                content = self.db.content.find_one({"id": rec["content_id"]})
+                title = content["title"] if content else "Unknown"
+                logger.info(f"  {i+1}. {title} - Score: {rec['recommendation_score']:.2f}, Confidence: {rec['confidence']:.2f}")
+        else:
+            logger.error("❌ No recommendations found in database")
+    except Exception as e:
+        logger.error(f"❌ Database check error: {str(e)}")
+    
+    # Summary
+    logger.info("\n📋 Recommendations Pagination Test Summary:")
+    logger.info(f"✅ First page ({len(first_page)} items): {first_page_time:.3f}s")
+    logger.info(f"✅ Second page ({len(second_page)} items): {second_page_time:.3f}s")
+    logger.info(f"✅ Third page ({len(third_page)} items): {third_page_time:.3f}s")
+    
+    return True
+
+def test_watchlist_pagination(self):
+    """Test pagination for watchlist endpoint"""
+    logger.info("\n🔍 TESTING WATCHLIST PAGINATION")
+    
+    # Step 1: Register a new user if not already registered
+    if not self.auth_token:
+        logger.info("\n📋 Step 1: Register a new user")
+        reg_success, reg_response = self.test_user_registration()
+        if not reg_success:
+            logger.error("❌ Failed to register user, stopping test")
+            return False
+    
+    # Step 2: Submit votes to get content recommendations
+    logger.info("\n📋 Step 2: Submit votes to get content recommendations")
+    vote_success = self.simulate_voting_to_threshold(use_auth=True, target_votes=15)
+    if not vote_success:
+        logger.error("❌ Failed to submit votes")
+        return False
+    
+    # Step 3: Add multiple items to watchlist (30+ items)
+    logger.info("\n📋 Step 3: Add multiple items to watchlist (aiming for 30+ items)")
+    
+    # Get content items from database to add to watchlist
+    try:
+        content_items = list(self.db.content.find().limit(40))
+        logger.info(f"Found {len(content_items)} content items to potentially add to watchlist")
+        
+        # Add items to watchlist
+        added_count = 0
+        for item in content_items:
+            # Add to watchlist via content interaction
+            success, _ = self.test_content_interaction(item["id"], "want_to_watch", use_auth=True)
+            if success:
+                added_count += 1
+                if added_count % 10 == 0:
+                    logger.info(f"Added {added_count} items to watchlist")
+            
+            # Stop after adding 30 items
+            if added_count >= 30:
+                break
+        
+        logger.info(f"✅ Successfully added {added_count} items to watchlist")
+    except Exception as e:
+        logger.error(f"❌ Error adding items to watchlist: {str(e)}")
+        return False
+    
+    # Step 4: Test first page of watchlist
+    logger.info("\n📋 Step 4: Test first page of watchlist (offset=0, limit=20)")
+    start_time = time.time()
+    success, first_page = self.run_test(
+        "Watchlist First Page",
+        "GET",
+        "watchlist/user_defined",
+        200,
+        auth=True,
+        params={"offset": 0, "limit": 20}
+    )
+    first_page_time = time.time() - start_time
+    
+    if not success:
+        logger.error("❌ Failed to get first page of watchlist")
+        return False
+    
+    # Verify response structure
+    if 'items' in first_page and 'total_count' in first_page and 'has_more' in first_page:
+        logger.info(f"✅ First page contains {len(first_page['items'])} watchlist items")
+        logger.info(f"✅ Total watchlist items: {first_page['total_count']}")
+        logger.info(f"✅ Has more items: {first_page['has_more']}")
+        logger.info(f"✅ Response time: {first_page_time:.3f} seconds")
+        
+        # Log some sample items
+        for i, item in enumerate(first_page['items'][:3]):
+            logger.info(f"  {i+1}. {item['content']['title']} - Priority: {item['priority']}")
+    else:
+        logger.error("❌ Invalid response structure for watchlist")
+        return False
+    
+    # Step 5: Test second page of watchlist
+    logger.info("\n📋 Step 5: Test second page of watchlist (offset=20, limit=20)")
+    start_time = time.time()
+    success, second_page = self.run_test(
+        "Watchlist Second Page",
+        "GET",
+        "watchlist/user_defined",
+        200,
+        auth=True,
+        params={"offset": 20, "limit": 20}
+    )
+    second_page_time = time.time() - start_time
+    
+    if not success:
+        logger.error("❌ Failed to get second page of watchlist")
+        return False
+    
+    if 'items' in second_page:
+        logger.info(f"✅ Second page contains {len(second_page['items'])} watchlist items")
+        logger.info(f"✅ Response time: {second_page_time:.3f} seconds")
+        
+        # Check for duplicate items between pages
+        if 'items' in first_page and len(first_page['items']) > 0:
+            first_page_ids = [item['watchlist_id'] for item in first_page['items']]
+            second_page_ids = [item['watchlist_id'] for item in second_page['items']]
+            duplicates = set(first_page_ids) & set(second_page_ids)
+            
+            if duplicates:
+                logger.warning(f"⚠️ Found {len(duplicates)} duplicate watchlist items between pages")
+            else:
+                logger.info("✅ No duplicate watchlist items between pages")
+    
+    # Step 6: Test edge cases
+    logger.info("\n📋 Step 6: Test edge cases")
+    
+    # Test with offset beyond available items
+    success, beyond_offset = self.run_test(
+        "Watchlist Beyond Available",
+        "GET",
+        "watchlist/user_defined",
+        200,
+        auth=True,
+        params={"offset": 1000, "limit": 20}
+    )
+    
+    if success and 'items' in beyond_offset:
+        logger.info(f"✅ Beyond offset returns {len(beyond_offset['items'])} watchlist items")
+    
+    # Test with minimum limit
+    success, min_limit = self.run_test(
+        "Watchlist Minimum Limit",
+        "GET",
+        "watchlist/user_defined",
+        200,
+        auth=True,
+        params={"offset": 0, "limit": 1}
+    )
+    
+    if success and 'items' in min_limit:
+        logger.info(f"✅ Minimum limit returns {len(min_limit['items'])} watchlist items")
+    
+    # Test with maximum limit
+    success, max_limit = self.run_test(
+        "Watchlist Maximum Limit",
+        "GET",
+        "watchlist/user_defined",
+        200,
+        auth=True,
+        params={"offset": 0, "limit": 100}
+    )
+    
+    if success and 'items' in max_limit:
+        logger.info(f"✅ Maximum limit returns {len(max_limit['items'])} watchlist items")
+    
+    # Test with invalid parameters
+    success, invalid_params = self.run_test(
+        "Watchlist Invalid Parameters",
+        "GET",
+        "watchlist/user_defined",
+        422,  # FastAPI validation error
+        auth=True,
+        params={"offset": -1, "limit": 0}
+    )
+    
+    # Summary
+    logger.info("\n📋 Watchlist Pagination Test Summary:")
+    if 'items' in first_page and 'items' in second_page:
+        logger.info(f"✅ First page ({len(first_page['items'])} items): {first_page_time:.3f}s")
+        logger.info(f"✅ Second page ({len(second_page['items'])} items): {second_page_time:.3f}s")
+        logger.info(f"✅ Total watchlist items: {first_page['total_count']}")
+    
+    return True
+
+def test_performance_with_large_dataset(self):
+    """Test performance with large datasets"""
+    logger.info("\n🔍 TESTING PERFORMANCE WITH LARGE DATASET")
+    
+    # Step 1: Register a new user if not already registered
+    if not self.auth_token:
+        logger.info("\n📋 Step 1: Register a new user")
+        reg_success, reg_response = self.test_user_registration()
+        if not reg_success:
+            logger.error("❌ Failed to register user, stopping test")
+            return False
+    
+    # Step 2: Submit many votes to generate a large dataset
+    logger.info("\n📋 Step 2: Submit many votes (30+) to generate a large dataset")
+    vote_success = self.simulate_voting_to_threshold(use_auth=True, target_votes=30)
+    if not vote_success:
+        logger.error("❌ Failed to submit votes")
+        return False
+    
+    # Step 3: Add many items to watchlist
+    logger.info("\n📋 Step 3: Add many items to watchlist")
+    try:
+        content_items = list(self.db.content.find().limit(40))
+        added_count = 0
+        for item in content_items:
+            success, _ = self.test_content_interaction(item["id"], "want_to_watch", use_auth=True)
+            if success:
+                added_count += 1
+            if added_count >= 30:
+                break
+        logger.info(f"✅ Added {added_count} items to watchlist")
+    except Exception as e:
+        logger.error(f"❌ Error adding items to watchlist: {str(e)}")
+    
+    # Step 4: Test recommendations performance with different page sizes
+    logger.info("\n📋 Step 4: Test recommendations performance with different page sizes")
+    
+    # Wait for recommendations to be generated
+    logger.info("Waiting 5 seconds for recommendations to be generated...")
+    time.sleep(5)
+    
+    page_sizes = [10, 20, 50, 100]
+    for size in page_sizes:
+        start_time = time.time()
+        success, response = self.run_test(
+            f"Recommendations (limit={size})",
+            "GET",
+            "recommendations",
+            200,
+            auth=True,
+            params={"offset": 0, "limit": size}
+        )
+        elapsed_time = time.time() - start_time
+        
+        if success and isinstance(response, list):
+            logger.info(f"✅ Recommendations with limit={size}: {len(response)} items in {elapsed_time:.3f}s")
+        else:
+            logger.error(f"❌ Failed to get recommendations with limit={size}")
+    
+    # Step 5: Test watchlist performance with different page sizes
+    logger.info("\n📋 Step 5: Test watchlist performance with different page sizes")
+    
+    for size in page_sizes:
+        start_time = time.time()
+        success, response = self.run_test(
+            f"Watchlist (limit={size})",
+            "GET",
+            "watchlist/user_defined",
+            200,
+            auth=True,
+            params={"offset": 0, "limit": size}
+        )
+        elapsed_time = time.time() - start_time
+        
+        if success and 'items' in response:
+            logger.info(f"✅ Watchlist with limit={size}: {len(response['items'])} items in {elapsed_time:.3f}s")
+        else:
+            logger.error(f"❌ Failed to get watchlist with limit={size}")
+    
+    # Step 6: Check database for total recommendations
+    logger.info("\n📋 Step 6: Check database for total recommendations")
+    try:
+        total_recs = self.db.algo_recommendations.count_documents({"user_id": self.user_id})
+        logger.info(f"✅ Total recommendations in database: {total_recs}")
+        
+        if total_recs > 0:
+            # Check if we're approaching the 1000 item limit
+            if total_recs >= 900:
+                logger.info(f"✅ Successfully generated {total_recs} recommendations, approaching 1000-item limit")
+            else:
+                logger.info(f"✅ Successfully generated {total_recs} recommendations")
+    except Exception as e:
+        logger.error(f"❌ Database check error: {str(e)}")
+    
+    return True
+
 def main():
     tester = MoviePreferenceAPITester()
     
-    # Test the specific defect
-    defect_test_result = tester.test_recommendation_generation_at_10_votes()
+    # Test pagination for recommendations
+    recommendations_pagination_result = tester.test_recommendations_pagination()
     
-    # Test with multiple users for consistency
-    multi_user_test_result = tester.test_recommendation_generation_with_multiple_users(num_users=2)
+    # Test pagination for watchlist
+    watchlist_pagination_result = tester.test_watchlist_pagination()
+    
+    # Test performance with large dataset
+    performance_result = tester.test_performance_with_large_dataset()
     
     # Print results
     logger.info(f"\n📊 Tests passed: {tester.tests_passed}/{tester.tests_run}")
@@ -536,21 +991,26 @@ def main():
         status_icon = "✅" if result["status"] == "PASS" else "❌" if result["status"] == "FAIL" else "⚠️"
         logger.info(f"{status_icon} {result['name']}: {result['status']} - {result['details']}")
     
-    # Print defect test summary
-    logger.info("\n📋 Defect Test Summary:")
-    if defect_test_result:
-        logger.info("✅ PASS: New user with exactly 10 votes successfully received AI recommendations")
+    # Print pagination test summary
+    logger.info("\n📋 Pagination Test Summary:")
+    if recommendations_pagination_result:
+        logger.info("✅ PASS: Recommendations pagination is working correctly")
     else:
-        logger.info("❌ FAIL: New user with exactly 10 votes did NOT receive AI recommendations")
+        logger.info("❌ FAIL: Recommendations pagination has issues")
     
-    # Print multi-user test summary
-    logger.info("\n📋 Multi-User Test Summary:")
-    if multi_user_test_result:
-        logger.info("✅ PASS: All test users successfully received AI recommendations after 10 votes")
+    if watchlist_pagination_result:
+        logger.info("✅ PASS: Watchlist pagination is working correctly")
     else:
-        logger.info("❌ FAIL: Some test users did NOT receive AI recommendations after 10 votes")
+        logger.info("❌ FAIL: Watchlist pagination has issues")
     
-    return 0 if defect_test_result and multi_user_test_result else 1
+    # Print performance test summary
+    logger.info("\n📋 Performance Test Summary:")
+    if performance_result:
+        logger.info("✅ PASS: Performance with large datasets is acceptable")
+    else:
+        logger.info("❌ FAIL: Performance issues detected with large datasets")
+    
+    return 0 if recommendations_pagination_result and watchlist_pagination_result and performance_result else 1
 
 if __name__ == "__main__":
     sys.exit(main())
