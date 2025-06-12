@@ -515,6 +515,9 @@ function App() {
   const toggleRecommendations = async () => {
     if (showRecommendations) {
       setShowRecommendations(false);
+      // Clear any pending watched timeouts when closing recommendations
+      pendingWatched.forEach(timeoutId => clearTimeout(timeoutId));
+      setPendingWatched(new Map());
       return;
     }
 
@@ -529,6 +532,9 @@ function App() {
       // Reset pagination and recommendations for fresh load
       setRecommendations([]);
       setRecommendationsPage({ offset: 0, hasMore: true, loading: false });
+      // Clear watched states for fresh load
+      setWatchedRecommendations(new Set());
+      setPendingWatched(new Map());
 
       if (user) {
         // For authenticated users, use the consolidated recommendations endpoint
