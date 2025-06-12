@@ -584,8 +584,12 @@ function App() {
     if (showRecommendations) {
       setShowRecommendations(false);
       // Clear any pending watched timeouts when closing recommendations
-      pendingWatched.forEach(timeoutId => clearTimeout(timeoutId));
+      pendingWatched.forEach(({ timeoutId, intervalId }) => {
+        clearTimeout(timeoutId);
+        clearInterval(intervalId);
+      });
       setPendingWatched(new Map());
+      setCountdowns(new Map());
       return;
     }
 
@@ -603,6 +607,7 @@ function App() {
       // Clear watched states for fresh load
       setWatchedRecommendations(new Set());
       setPendingWatched(new Map());
+      setCountdowns(new Map());
 
       if (user) {
         // For authenticated users, use the consolidated recommendations endpoint
