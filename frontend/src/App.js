@@ -35,7 +35,8 @@ function App() {
   
   // Watched recommendations state
   const [watchedRecommendations, setWatchedRecommendations] = useState(new Set());
-  const [pendingWatched, setPendingWatched] = useState(new Map()); // Map of content_id -> timeout_id
+  const [pendingWatched, setPendingWatched] = useState(new Map()); // Map of content_id -> {timeoutId, countdown}
+  const [countdowns, setCountdowns] = useState(new Map()); // Map of content_id -> remaining seconds
   const [contentInteractions, setContentInteractions] = useState({}); // Track interactions per content ID
   const [removedRecommendations, setRemovedRecommendations] = useState(new Set()); // Track removed recommendation IDs
   const [undoModal, setUndoModal] = useState({ show: false, item: null, action: null }); // Undo modal state
