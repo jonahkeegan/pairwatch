@@ -180,9 +180,17 @@ function App() {
     setPendingWatched(prev => {
       const newMap = new Map(prev);
       if (newMap.has(contentId)) {
-        clearTimeout(newMap.get(contentId));
+        const { timeoutId, intervalId } = newMap.get(contentId);
+        clearTimeout(timeoutId);
+        clearInterval(intervalId);
         newMap.delete(contentId);
       }
+      return newMap;
+    });
+    
+    setCountdowns(prev => {
+      const newMap = new Map(prev);
+      newMap.delete(contentId);
       return newMap;
     });
   };
