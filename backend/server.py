@@ -1360,7 +1360,7 @@ async def get_watchlist(
             detailed_item = {
                 "watchlist_id": item["id"],
                 "content": content,
-                "added_at": item["created_at"],
+                "added_at": item["added_at"],
                 "priority": item.get("priority", 1)
             }
             
