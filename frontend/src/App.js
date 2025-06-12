@@ -1386,6 +1386,31 @@ function App() {
             })}
           </div>
           
+          {/* Infinite Scroll Loading */}
+          {recommendationsPage.hasMore && (
+            <div className="text-center mb-6">
+              {recommendationsPage.loading ? (
+                <div className="text-white">
+                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                  <p className="mt-2">Loading more recommendations...</p>
+                </div>
+              ) : (
+                <button
+                  onClick={loadMoreRecommendations}
+                  className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors"
+                >
+                  Load More Recommendations
+                </button>
+              )}
+            </div>
+          )}
+          
+          {!recommendationsPage.hasMore && recommendations.length > 20 && (
+            <div className="text-center mb-6">
+              <p className="text-blue-200">You've reached the end of your recommendations!</p>
+            </div>
+          )}
+          
           <div className="text-center">
             <button
               onClick={toggleRecommendations}
