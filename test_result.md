@@ -337,9 +337,7 @@
     - "Move 'My Watchlist' button from watchlists page to home page"
     - "Remove dual watchlist interface confusion"
     - "Remove manual AI recommendation generation and implement automatic system"
-    - "Implement infinite scroll pagination for recommendations and watchlist"
-  stuck_tasks: 
-    - "Implement infinite scroll pagination for recommendations and watchlist"
+  stuck_tasks: []
   test_all: true
   test_priority: "high_first"
 
