@@ -1594,7 +1594,13 @@ function App() {
                             Undo
                           </button>
                         </div>
-                        <div className="text-xs text-green-200 mt-1">Will be removed in 5 seconds...</div>
+                        <div className="text-xs text-green-200 mt-1 flex items-center">
+                          <span className="mr-2">Removing in</span>
+                          <span className="bg-green-700 text-white px-2 py-1 rounded font-mono text-sm">
+                            {countdowns.get(contentId) || 0}
+                          </span>
+                          <span className="ml-2">seconds...</span>
+                        </div>
                       </div>
                     ) : (
                       <button
