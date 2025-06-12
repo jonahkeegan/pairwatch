@@ -1351,7 +1351,7 @@ async def get_watchlist(
     watchlist_items = await db.user_watchlist.find({
         "user_id": current_user.id,
         "watchlist_type": watchlist_type
-    }).sort("created_at", -1).skip(offset).limit(limit).to_list(length=limit)
+    }).sort("added_at", -1).skip(offset).limit(limit).to_list(length=limit)
 
     detailed_watchlist = []
     for item in watchlist_items:
