@@ -465,37 +465,61 @@ function App() {
   };
 
   const toggleRecommendations = async () => {
-    if (!showRecommendations) {
-      // Load recommendations when showing
+    if (showRecommendations) {
+      setShowRecommendations(false);
+      return;
+    }
+
+    if (!userStats?.recommendations_available && !sessionId) {
+      alert('Need at least 10 votes for recommendations!');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      // Reset pagination and recommendations for fresh load
+      setRecommendations([]);
+      setRecommendationsPage({ offset: 0, hasMore: true, loading: false });
+
       if (user) {
         // For authenticated users, use the consolidated recommendations endpoint
-        try {
-          const recResponse = await axios.get(`${API}/recommendations`);
-          if (recResponse.data && recResponse.data.length > 0) {
-            setRecommendations(recResponse.data);
-          } else {
-            // No recommendations yet
-            alert('No AI recommendations available yet. Keep voting and interacting with content - recommendations will be automatically generated based on your preferences!');
-            return;
-          }
-        } catch (error) {
-          console.error('Failed to load recommendations:', error);
-          alert('Failed to load recommendations. Please try again.');
+        const response = await axios.get(`${API}/recommendations?offset=0&limit=20`);
+        if (response.data && response.data.length > 0) {
+          setRecommendations(response.data);
+          setRecommendationsPage({
+            offset: 20,
+            hasMore: response.data.length === 20,
+            loading: false
+          });
+        } else {
+          // No recommendations yet
+          alert('No AI recommendations available yet. Keep voting and interacting with content - recommendations will be automatically generated based on your preferences!');
           return;
         }
       } else {
         // For guests, use original recommendation system
-        try {
-          const params = { session_id: sessionId };
-          const recResponse = await axios.get(`${API}/recommendations`, { params });
-          setRecommendations(recResponse.data);
-        } catch (error) {
-          console.error('Failed to load recommendations:', error);
-          alert('Need at least 10 votes for recommendations!');
-          return;
-        }
+        const params = { session_id: sessionId, offset: 0, limit: 20 };
+        const recResponse = await axios.get(`${API}/recommendations`, { params });
+        setRecommendations(recResponse.data);
+        setRecommendationsPage({
+          offset: 20,
+          hasMore: recResponse.data.length === 20,
+          loading: false
+        });
       }
+    } catch (error) {
+      if (error.response && error.response.status === 400) {
+        alert('Need at least 10 votes for recommendations!');
+      } else {
+        console.error('Failed to load recommendations:', error);
+        alert('Failed to load recommendations. Please try again.');
+      }
+      return;
+    } finally {
+      setLoading(false);
     }
+    
     setShowRecommendations(!showRecommendations);
   };
 
