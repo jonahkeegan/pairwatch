@@ -28,6 +28,21 @@
 ##         -agent: "main"  # or "testing" or "user"
 ##         -comment: "Detailed comment about status"
 ##
+
+  - task: "Test infinite scroll pagination for recommendations and watchlist"
+    implemented: true
+    working: false
+    file: "backend/server.py"
+    stuck_count: 1
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "Tested pagination for recommendations endpoint. Pagination works correctly with offset and limit parameters. First, second, and third pages return different sets of recommendations without duplicates. Performance is good with response times under 0.1s for standard page sizes. The system can generate up to 1000 recommendations as specified."
+      - working: false
+        agent: "testing"
+        comment: "Found a bug in the watchlist pagination endpoint. The endpoint returns a 500 error due to a KeyError: 'created_at'. The UserWatchlist model has a field called 'added_at' but the get_watchlist function is trying to access 'created_at'. This needs to be fixed by changing line 1363 in server.py from 'added_at': item['created_at'] to 'added_at': item['added_at']."
 ## frontend:
 ##   - task: "Task name"
 ##     implemented: true
@@ -57,6 +72,9 @@
 ##   test_priority: "high_first"  # or "sequential" or "stuck_first"
 ##
 ## agent_communication:
+
+  - agent: "testing"
+    message: "Completed testing of infinite scroll pagination for both recommendations and watchlist endpoints. The recommendations pagination works correctly with offset and limit parameters. First, second, and third pages return different sets of recommendations without duplicates. Performance is good with response times under 0.1s for standard page sizes. The system can generate up to 1000 recommendations as specified. However, found a bug in the watchlist pagination endpoint. The endpoint returns a 500 error due to a KeyError: 'created_at'. The UserWatchlist model has a field called 'added_at' but the get_watchlist function is trying to access 'created_at'. This needs to be fixed by changing line 1363 in server.py from 'added_at': item['created_at'] to 'added_at': item['added_at']."
 ##     -agent: "main"  # or "testing" or "user"
 ##     -message: "Communication message between agents"
 
