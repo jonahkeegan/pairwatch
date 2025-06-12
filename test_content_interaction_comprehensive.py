@@ -239,10 +239,10 @@ def test_content_interaction_watched_comprehensive():
         auth_token=auth_token
     )
     
-    if not success:
-        logger.info("✅ Correctly rejected request with invalid interaction_type")
-    else:
+    if success:
         logger.error("❌ Unexpectedly accepted request with invalid interaction_type")
+    else:
+        logger.info("✅ Correctly rejected request with invalid interaction_type")
     
     # Step 8: Test with invalid content_id
     logger.info("\n📋 Step 8: Test with invalid content_id")
