@@ -1359,6 +1359,36 @@ function App() {
             <p className="text-blue-200">Based on your {userStats?.total_votes} votes</p>
           </div>
           
+          {/* Action Buttons at Top */}
+          <div className="flex justify-center space-x-4 mb-8">
+            <button
+              onClick={toggleRecommendations}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors"
+            >
+              Continue Voting
+            </button>
+            {recommendationsPage.hasMore && (
+              <button
+                onClick={loadMoreRecommendations}
+                disabled={recommendationsPage.loading}
+                className={`font-bold py-3 px-6 rounded-lg transition-colors ${
+                  recommendationsPage.loading
+                    ? 'bg-gray-500 text-gray-300 cursor-not-allowed'
+                    : 'bg-green-600 hover:bg-green-700 text-white'
+                }`}
+              >
+                {recommendationsPage.loading ? (
+                  <div className="flex items-center">
+                    <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Loading More...
+                  </div>
+                ) : (
+                  'Load More Recommendations'
+                )}
+              </button>
+            )}
+          </div>
+          
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
             {recommendations.map((rec, index) => {
               // Handle both old recommendation format and new ML watchlist format
