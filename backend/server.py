@@ -1000,14 +1000,14 @@ async def check_and_auto_refresh_recommendations(user_id: str) -> bool:
         traceback.print_exc()
         return True  # Default to refresh on error
 
-async def get_stored_ai_recommendations(user_id: str) -> List[Recommendation]:
-    """Get stored AI recommendations from database"""
+async def get_stored_ai_recommendations(user_id: str, offset: int = 0, limit: int = 20) -> List[Recommendation]:
+    """Get stored AI recommendations from database with pagination"""
     try:
-        # Get stored recommendations
+        # Get stored recommendations with pagination
         stored_recs = await db.algo_recommendations.find({
             "user_id": user_id,
             "viewed": False
-        }).sort("recommendation_score", -1).limit(5).to_list(length=5)
+        }).sort("recommendation_score", -1).skip(offset).limit(limit).to_list(length=limit)
         
         recommendations = []
         for rec in stored_recs:
