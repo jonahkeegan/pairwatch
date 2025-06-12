@@ -407,18 +407,18 @@ function App() {
     if (!showRecommendations) {
       // Load recommendations when showing
       if (user) {
-        // For authenticated users, load from ML watchlist
+        // For authenticated users, use the consolidated recommendations endpoint
         try {
-          const algoWatchlistResponse = await axios.get(`${API}/watchlist/algo_predicted`);
-          if (algoWatchlistResponse.data.items && algoWatchlistResponse.data.items.length > 0) {
-            setRecommendations(algoWatchlistResponse.data.items);
+          const recResponse = await axios.get(`${API}/recommendations`);
+          if (recResponse.data && recResponse.data.length > 0) {
+            setRecommendations(recResponse.data);
           } else {
-            // No ML recommendations yet, suggest generating them
+            // No recommendations yet
             alert('No AI recommendations available yet. Keep voting and interacting with content - recommendations will be automatically generated based on your preferences!');
             return;
           }
         } catch (error) {
-          console.error('Failed to load ML recommendations:', error);
+          console.error('Failed to load recommendations:', error);
           alert('Failed to load recommendations. Please try again.');
           return;
         }
