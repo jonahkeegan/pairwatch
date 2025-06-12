@@ -6,6 +6,15 @@ import random
 import string
 from datetime import datetime
 import json
+import pymongo
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger("recommendation_test")
 
 class MoviePreferenceAPITester:
     def __init__(self, base_url="https://bc399ce5-d614-4d4b-a2e3-afb7b5993410.preview.emergentagent.com/api"):
@@ -22,8 +31,12 @@ class MoviePreferenceAPITester:
         self.test_user_password = "TestPassword123!"
         self.test_user_name = f"Test User {datetime.now().strftime('%H%M%S')}"
         
-        print(f"🔍 Testing API at: {self.base_url}")
-        print(f"📝 Test user: {self.test_user_email}")
+        # MongoDB connection
+        self.mongo_client = pymongo.MongoClient("mongodb://localhost:27017")
+        self.db = self.mongo_client["movie_preferences_db"]
+        
+        logger.info(f"🔍 Testing API at: {self.base_url}")
+        logger.info(f"📝 Test user: {self.test_user_email}")
 
     def run_test(self, name, method, endpoint, expected_status, data=None, auth=False, params=None):
         """Run a single API test"""
@@ -35,7 +48,7 @@ class MoviePreferenceAPITester:
             headers['Authorization'] = f'Bearer {self.auth_token}'
         
         self.tests_run += 1
-        print(f"\n🔍 Testing {name}...")
+        logger.info(f"\n🔍 Testing {name}...")
         
         try:
             if method == 'GET':
@@ -50,10 +63,10 @@ class MoviePreferenceAPITester:
             success = response.status_code == expected_status
             if success:
                 self.tests_passed += 1
-                print(f"✅ Passed - Status: {response.status_code}")
+                logger.info(f"✅ Passed - Status: {response.status_code}")
                 self.test_results.append({"name": name, "status": "PASS", "details": f"Status: {response.status_code}"})
             else:
-                print(f"❌ Failed - Expected {expected_status}, got {response.status_code}")
+                logger.error(f"❌ Failed - Expected {expected_status}, got {response.status_code}")
                 self.test_results.append({"name": name, "status": "FAIL", "details": f"Expected {expected_status}, got {response.status_code}"})
 
             try:
@@ -62,7 +75,7 @@ class MoviePreferenceAPITester:
                 return success, {}
 
         except Exception as e:
-            print(f"❌ Failed - Error: {str(e)}")
+            logger.error(f"❌ Failed - Error: {str(e)}")
             self.test_results.append({"name": name, "status": "ERROR", "details": str(e)})
             return False, {}
 
@@ -86,8 +99,8 @@ class MoviePreferenceAPITester:
         if success and 'access_token' in response:
             self.auth_token = response['access_token']
             self.user_id = response['user']['id']
-            print(f"✅ User registered with ID: {self.user_id}")
-            print(f"✅ Auth token received: {self.auth_token[:10]}...")
+            logger.info(f"✅ User registered with ID: {self.user_id}")
+            logger.info(f"✅ Auth token received: {self.auth_token[:10]}...")
             return True, response
         
         return False, response
@@ -110,8 +123,8 @@ class MoviePreferenceAPITester:
         if success and 'access_token' in response:
             self.auth_token = response['access_token']
             self.user_id = response['user']['id']
-            print(f"✅ User logged in with ID: {self.user_id}")
-            print(f"✅ Auth token received: {self.auth_token[:10]}...")
+            logger.info(f"✅ User logged in with ID: {self.user_id}")
+            logger.info(f"✅ Auth token received: {self.auth_token[:10]}...")
             return True, response
         
         return False, response
@@ -128,7 +141,7 @@ class MoviePreferenceAPITester:
             params = {"session_id": self.session_id}
             auth = False
         else:
-            print("❌ No session ID or auth token available")
+            logger.error("❌ No session ID or auth token available")
             self.test_results.append({"name": "Get Voting Pair", "status": "SKIP", "details": "No session ID or auth token available"})
             return False, {}
         
@@ -154,7 +167,7 @@ class MoviePreferenceAPITester:
         if not use_auth or not self.auth_token:
             # Guest session vote
             if not self.session_id:
-                print("❌ No session ID available")
+                logger.error("❌ No session ID available")
                 self.test_results.append({"name": "Submit Vote", "status": "SKIP", "details": "No session ID available"})
                 return False, {}
             data["session_id"] = self.session_id
@@ -174,7 +187,7 @@ class MoviePreferenceAPITester:
         
         # Verify vote was recorded
         if success and response.get('vote_recorded') == True:
-            print(f"✅ Vote recorded. Total votes: {response.get('total_votes')}")
+            logger.info(f"✅ Vote recorded. Total votes: {response.get('total_votes')}")
             return True, response
         
         return success, response
@@ -191,7 +204,7 @@ class MoviePreferenceAPITester:
             params = {"session_id": self.session_id}
             auth = False
         else:
-            print("❌ No session ID or auth token available")
+            logger.error("❌ No session ID or auth token available")
             self.test_results.append({"name": "Get Stats", "status": "SKIP", "details": "No session ID or auth token available"})
             return False, {}
         
@@ -205,12 +218,12 @@ class MoviePreferenceAPITester:
         )
         
         if success:
-            print(f"Total votes: {response.get('total_votes')}")
-            print(f"Movie votes: {response.get('movie_votes')}")
-            print(f"Series votes: {response.get('series_votes')}")
-            print(f"Votes until recommendations: {response.get('votes_until_recommendations')}")
-            print(f"Recommendations available: {response.get('recommendations_available')}")
-            print(f"User authenticated: {response.get('user_authenticated')}")
+            logger.info(f"Total votes: {response.get('total_votes')}")
+            logger.info(f"Movie votes: {response.get('movie_votes')}")
+            logger.info(f"Series votes: {response.get('series_votes')}")
+            logger.info(f"Votes until recommendations: {response.get('votes_until_recommendations')}")
+            logger.info(f"Recommendations available: {response.get('recommendations_available')}")
+            logger.info(f"User authenticated: {response.get('user_authenticated')}")
         
         return success, response
 
@@ -226,7 +239,7 @@ class MoviePreferenceAPITester:
             params = {"session_id": self.session_id}
             auth = False
         else:
-            print("❌ No session ID or auth token available")
+            logger.error("❌ No session ID or auth token available")
             self.test_results.append({"name": "Get Recommendations", "status": "SKIP", "details": "No session ID or auth token available"})
             return False, {}
         
@@ -240,23 +253,23 @@ class MoviePreferenceAPITester:
         )
         
         if success and isinstance(response, list):
-            print(f"✅ Received {len(response)} recommendations")
+            logger.info(f"✅ Received {len(response)} recommendations")
             
             # Check for poster data in recommendations
             poster_count = 0
             for i, rec in enumerate(response):
-                print(f"  {i+1}. {rec.get('title')} - {rec.get('reason')}")
+                logger.info(f"  {i+1}. {rec.get('title')} - {rec.get('reason')}")
                 
                 if rec.get('poster'):
                     poster_count += 1
-                    print(f"    ✅ Has poster URL: {rec.get('poster')[:50]}...")
+                    logger.info(f"    ✅ Has poster URL: {rec.get('poster')[:50]}...")
                 else:
-                    print(f"    ⚠️ No poster available")
+                    logger.info(f"    ⚠️ No poster available")
                     
                 if rec.get('imdb_id'):
-                    print(f"    ✅ Has IMDB ID: {rec.get('imdb_id')}")
+                    logger.info(f"    ✅ Has IMDB ID: {rec.get('imdb_id')}")
             
-            print(f"✅ {poster_count}/{len(response)} recommendations have poster images")
+            logger.info(f"✅ {poster_count}/{len(response)} recommendations have poster images")
         
         return success, response
 
@@ -276,7 +289,7 @@ class MoviePreferenceAPITester:
             data["session_id"] = session_id or self.session_id
             auth = False
         else:
-            print("❌ No session ID or auth token available for content interaction")
+            logger.error("❌ No session ID or auth token available for content interaction")
             self.test_results.append({"name": f"Content Interaction ({interaction_type})", "status": "SKIP", "details": "No session ID or auth token available"})
             return False, {}
         
@@ -290,14 +303,14 @@ class MoviePreferenceAPITester:
         )
         
         if success and response.get('success') == True:
-            print(f"✅ Content interaction '{interaction_type}' recorded successfully")
+            logger.info(f"✅ Content interaction '{interaction_type}' recorded successfully")
             return True, response
         
         return False, response
 
     def simulate_voting_to_threshold(self, use_auth=True, target_votes=10):
         """Simulate voting until we reach the recommendation threshold"""
-        print(f"\n🔄 Simulating votes to reach recommendation threshold ({target_votes} votes) using {'authenticated user' if use_auth else 'guest session'}...")
+        logger.info(f"\n🔄 Simulating votes to reach recommendation threshold ({target_votes} votes) using {'authenticated user' if use_auth else 'guest session'}...")
         
         # Get current vote count
         _, stats = self.test_get_stats(use_auth=use_auth)
@@ -306,13 +319,13 @@ class MoviePreferenceAPITester:
         # Calculate how many more votes we need
         votes_needed = max(0, target_votes - current_votes)
         
-        print(f"Current votes: {current_votes}, Need {votes_needed} more to reach threshold of {target_votes}")
+        logger.info(f"Current votes: {current_votes}, Need {votes_needed} more to reach threshold of {target_votes}")
         
         for i in range(votes_needed):
             # Get a voting pair
             success, pair = self.test_get_voting_pair(use_auth)
             if not success:
-                print(f"❌ Failed to get voting pair on iteration {i+1}")
+                logger.error(f"❌ Failed to get voting pair on iteration {i+1}")
                 return False
             
             # Submit a vote (always choose item1 as winner for simplicity)
@@ -324,130 +337,220 @@ class MoviePreferenceAPITester:
             )
             
             if not vote_success:
-                print(f"❌ Failed to submit vote on iteration {i+1}")
+                logger.error(f"❌ Failed to submit vote on iteration {i+1}")
                 return False
             
             # Print progress
             if (i+1) % 5 == 0 or i == votes_needed - 1:
-                print(f"Progress: {i+1}/{votes_needed} votes")
+                logger.info(f"Progress: {i+1}/{votes_needed} votes")
         
-        print(f"✅ Successfully completed {votes_needed} votes")
+        logger.info(f"✅ Successfully completed {votes_needed} votes")
         return True
 
-    def test_automatic_triggers(self):
+    def check_database_for_recommendations(self, user_id):
+        """Check if recommendations were stored in the database"""
+        try:
+            # Check for recommendations in the database
+            recommendations = list(self.db.algo_recommendations.find({"user_id": user_id}))
+            
+            if recommendations:
+                logger.info(f"✅ Found {len(recommendations)} recommendations in database for user {user_id}")
+                
+                # Log some details about the recommendations
+                for i, rec in enumerate(recommendations[:5]):  # Show first 5 for brevity
+                    content = self.db.content.find_one({"id": rec["content_id"]})
+                    title = content["title"] if content else "Unknown"
+                    logger.info(f"  {i+1}. {title} - Score: {rec['recommendation_score']:.2f}, Confidence: {rec['confidence']:.2f}")
+                    logger.info(f"     Reasoning: {rec['reasoning']}")
+                
+                return True, recommendations
+            else:
+                logger.error("❌ No recommendations found in database")
+                return False, []
+                
+        except Exception as e:
+            logger.error(f"❌ Database check error: {str(e)}")
+            return False, []
+
+    def test_recommendation_generation_at_10_votes(self):
         """
-        Test the automatic trigger points with debugging enabled.
-        
-        This test specifically verifies:
-        1. Register a new user
-        2. Submit exactly 10 votes (this should trigger milestone auto-generation)
-        3. Mark some content as "watched" (this should trigger interaction-based refresh)
-        4. Submit 5 more votes to reach 15 votes (another milestone)
-        
-        The test captures and reports DEBUG messages from the logs.
+        Test the specific defect: brand new logged-in user with exactly 10 votes 
+        should see AI recommendations but instead sees "No AI recommendations available yet."
         """
-        print("\n🔍 Testing Automatic Trigger Points with Debugging...")
+        logger.info("\n🔍 TESTING DEFECT: New user with 10 votes should see AI recommendations")
         
         # Step 1: Register a new user
-        print("\n📋 Step 1: Register a new user")
-        reg_success, _ = self.test_user_registration()
+        logger.info("\n📋 Step 1: Register a completely fresh user account")
+        reg_success, reg_response = self.test_user_registration()
         if not reg_success:
-            print("❌ Failed to register user, stopping test")
+            logger.error("❌ Failed to register user, stopping test")
             return False
         
-        print("✅ Successfully registered new user")
+        logger.info(f"✅ Successfully registered new user: {self.test_user_email}")
         
-        # Step 2: Submit exactly 10 votes (this should trigger milestone auto-generation)
-        print("\n📋 Step 2: Submit exactly 10 votes (milestone trigger)")
+        # Step 2: Submit exactly 10 votes
+        logger.info("\n📋 Step 2: Submit exactly 10 votes to trigger the recommendation system")
         vote_success = self.simulate_voting_to_threshold(use_auth=True, target_votes=10)
         if not vote_success:
-            print("❌ Failed to submit 10 votes")
+            logger.error("❌ Failed to submit 10 votes")
             return False
         
-        print("✅ Successfully submitted 10 votes")
+        logger.info("✅ Successfully submitted exactly 10 votes")
         
-        # Check if recommendations are available
+        # Step 3: Check if recommendations are available in stats
+        logger.info("\n📋 Step 3: Verify recommendations_available flag in stats")
         _, stats = self.test_get_stats(use_auth=True)
         if stats.get('recommendations_available'):
-            print("✅ Recommendations are available after 10 votes")
+            logger.info("✅ Stats API confirms recommendations are available after 10 votes")
         else:
-            print("❌ Recommendations are not available after 10 votes")
+            logger.error("❌ Stats API reports recommendations are NOT available after 10 votes")
         
-        # Get recommendations to verify they were auto-generated
+        # Step 4: Call /api/recommendations immediately after 10th vote
+        logger.info("\n📋 Step 4: Call /api/recommendations immediately after 10th vote")
         success, recommendations = self.test_get_recommendations(use_auth=True)
-        if success and len(recommendations) > 0:
-            print(f"✅ Auto-generated recommendations available: {len(recommendations)} items")
+        
+        if success:
+            if isinstance(recommendations, list) and len(recommendations) > 0:
+                logger.info(f"✅ Received {len(recommendations)} recommendations immediately after 10th vote")
+                
+                # Log the recommendations
+                for i, rec in enumerate(recommendations):
+                    logger.info(f"  {i+1}. {rec.get('title')} - {rec.get('reason')}")
+            else:
+                logger.error("❌ Received empty recommendations list immediately after 10th vote")
+                logger.error(f"API Response: {recommendations}")
         else:
-            print("❌ No auto-generated recommendations found")
+            logger.error("❌ Failed to get recommendations")
         
-        # Step 3: Mark some content as "watched" (this should trigger interaction-based refresh)
-        print("\n📋 Step 3: Mark content as 'watched' (interaction trigger)")
+        # Step 5: Check database for recommendations
+        logger.info("\n📋 Step 5: Check if recommendations were stored in algo_recommendations table")
+        db_success, db_recommendations = self.check_database_for_recommendations(self.user_id)
         
-        # Get a voting pair to get content ID
-        pair_success, pair = self.test_get_voting_pair(use_auth=True)
-        if not pair_success:
-            print("❌ Failed to get content for interaction")
-            return False
+        # Step 6: Timing test - try calling recommendations again after a short delay
+        logger.info("\n📋 Step 6: Timing test - try calling recommendations again after a short delay")
+        logger.info("Waiting 5 seconds for potential background processing...")
+        time.sleep(5)
         
-        # Mark content as watched
-        content_id = pair['item1']['id']
-        content_title = pair['item1']['title']
+        delayed_success, delayed_recommendations = self.test_get_recommendations(use_auth=True)
         
-        print(f"Marking content as watched: {content_title} (ID: {content_id})")
-        watched_success, _ = self.test_content_interaction(content_id, "watched", use_auth=True)
+        if delayed_success:
+            if isinstance(delayed_recommendations, list) and len(delayed_recommendations) > 0:
+                logger.info(f"✅ Received {len(delayed_recommendations)} recommendations after 5-second delay")
+            else:
+                logger.error("❌ Still received empty recommendations list after 5-second delay")
         
-        if not watched_success:
-            print("❌ Failed to mark content as watched")
-            return False
+        # Step 7: Try a longer delay
+        logger.info("\n📋 Step 7: Try a longer delay (10 seconds)")
+        logger.info("Waiting 10 more seconds for potential background processing...")
+        time.sleep(10)
         
-        print("✅ Successfully marked content as watched")
+        long_delayed_success, long_delayed_recommendations = self.test_get_recommendations(use_auth=True)
         
-        # Wait a moment for background processing
-        print("Waiting for background processing...")
-        time.sleep(3)
+        if long_delayed_success:
+            if isinstance(long_delayed_recommendations, list) and len(long_delayed_recommendations) > 0:
+                logger.info(f"✅ Received {len(long_delayed_recommendations)} recommendations after 15-second total delay")
+            else:
+                logger.error("❌ Still received empty recommendations list after 15-second total delay")
         
-        # Step 4: Submit 5 more votes to reach 15 votes (another milestone)
-        print("\n📋 Step 4: Submit 5 more votes to reach 15 votes (another milestone)")
-        vote_success = self.simulate_voting_to_threshold(use_auth=True, target_votes=15)
-        if not vote_success:
-            print("❌ Failed to submit additional votes")
-            return False
+        # Step 8: Final summary
+        logger.info("\n📋 Step 8: Final summary of recommendation testing")
         
-        print("✅ Successfully submitted 5 more votes (total: 15)")
-        
-        # Check if recommendations are still available
-        _, stats = self.test_get_stats(use_auth=True)
-        if stats.get('recommendations_available'):
-            print("✅ Recommendations are available after 15 votes")
+        if (isinstance(recommendations, list) and len(recommendations) > 0) or \
+           (isinstance(delayed_recommendations, list) and len(delayed_recommendations) > 0) or \
+           (isinstance(long_delayed_recommendations, list) and len(long_delayed_recommendations) > 0):
+            logger.info("✅ PASS: Recommendations were successfully generated for new user with 10 votes")
+            return True
         else:
-            print("❌ Recommendations are not available after 15 votes")
+            logger.error("❌ FAIL: No recommendations were generated for new user with 10 votes")
+            return False
+
+    def test_recommendation_generation_with_multiple_users(self, num_users=3):
+        """Test recommendation generation with multiple users to verify consistency"""
+        logger.info(f"\n🔍 Testing recommendation generation with {num_users} different users")
         
-        # Get recommendations again to verify they were refreshed
-        success, recommendations = self.test_get_recommendations(use_auth=True)
-        if success and len(recommendations) > 0:
-            print(f"✅ Recommendations available after milestone: {len(recommendations)} items")
-        else:
-            print("❌ No recommendations found after milestone")
+        results = []
         
-        print("\n✅ Automatic trigger testing completed")
-        return True
+        for i in range(num_users):
+            # Reset user credentials for a new user
+            self.test_user_email = f"test_user_{datetime.now().strftime('%Y%m%d%H%M%S')}_{i}@example.com"
+            self.test_user_password = "TestPassword123!"
+            self.test_user_name = f"Test User {datetime.now().strftime('%H%M%S')} {i}"
+            
+            logger.info(f"\n📋 Testing with user {i+1}: {self.test_user_email}")
+            
+            # Register new user
+            reg_success, _ = self.test_user_registration()
+            if not reg_success:
+                logger.error(f"❌ Failed to register user {i+1}")
+                results.append(False)
+                continue
+            
+            # Submit 10 votes
+            vote_success = self.simulate_voting_to_threshold(use_auth=True, target_votes=10)
+            if not vote_success:
+                logger.error(f"❌ Failed to submit 10 votes for user {i+1}")
+                results.append(False)
+                continue
+            
+            # Check for recommendations
+            success, recommendations = self.test_get_recommendations(use_auth=True)
+            
+            if success and isinstance(recommendations, list) and len(recommendations) > 0:
+                logger.info(f"✅ User {i+1}: Received {len(recommendations)} recommendations")
+                results.append(True)
+            else:
+                # Try with a delay
+                logger.info(f"User {i+1}: No immediate recommendations, waiting 5 seconds...")
+                time.sleep(5)
+                
+                delayed_success, delayed_recommendations = self.test_get_recommendations(use_auth=True)
+                
+                if delayed_success and isinstance(delayed_recommendations, list) and len(delayed_recommendations) > 0:
+                    logger.info(f"✅ User {i+1}: Received {len(delayed_recommendations)} recommendations after delay")
+                    results.append(True)
+                else:
+                    logger.error(f"❌ User {i+1}: No recommendations available even after delay")
+                    results.append(False)
+        
+        # Summarize results
+        success_count = results.count(True)
+        logger.info(f"\n📊 Recommendation generation succeeded for {success_count}/{num_users} users")
+        
+        return success_count == num_users
 
 def main():
     tester = MoviePreferenceAPITester()
     
-    # Test the automatic triggers with debugging enabled
-    tester.test_automatic_triggers()
+    # Test the specific defect
+    defect_test_result = tester.test_recommendation_generation_at_10_votes()
+    
+    # Test with multiple users for consistency
+    multi_user_test_result = tester.test_recommendation_generation_with_multiple_users(num_users=2)
     
     # Print results
-    print(f"\n📊 Tests passed: {tester.tests_passed}/{tester.tests_run}")
+    logger.info(f"\n📊 Tests passed: {tester.tests_passed}/{tester.tests_run}")
     
     # Print detailed results
-    print("\n📋 Test Results:")
+    logger.info("\n📋 Test Results:")
     for result in tester.test_results:
         status_icon = "✅" if result["status"] == "PASS" else "❌" if result["status"] == "FAIL" else "⚠️"
-        print(f"{status_icon} {result['name']}: {result['status']} - {result['details']}")
+        logger.info(f"{status_icon} {result['name']}: {result['status']} - {result['details']}")
     
-    return 0 if tester.tests_passed == tester.tests_run else 1
+    # Print defect test summary
+    logger.info("\n📋 Defect Test Summary:")
+    if defect_test_result:
+        logger.info("✅ PASS: New user with exactly 10 votes successfully received AI recommendations")
+    else:
+        logger.info("❌ FAIL: New user with exactly 10 votes did NOT receive AI recommendations")
+    
+    # Print multi-user test summary
+    logger.info("\n📋 Multi-User Test Summary:")
+    if multi_user_test_result:
+        logger.info("✅ PASS: All test users successfully received AI recommendations after 10 votes")
+    else:
+        logger.info("❌ FAIL: Some test users did NOT receive AI recommendations after 10 votes")
+    
+    return 0 if defect_test_result and multi_user_test_result else 1
 
 if __name__ == "__main__":
     sys.exit(main())
