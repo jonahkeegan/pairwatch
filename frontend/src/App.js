@@ -1220,6 +1220,31 @@ function App() {
               </div>
             )}
           </div>
+          
+          {/* Infinite Scroll Loading for Watchlist */}
+          {watchlistPage.hasMore && userWatchlist.length > 0 && (
+            <div className="text-center mb-6">
+              {watchlistPage.loading ? (
+                <div className="text-white">
+                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                  <p className="mt-2">Loading more watchlist items...</p>
+                </div>
+              ) : (
+                <button
+                  onClick={loadMoreWatchlist}
+                  className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg transition-colors"
+                >
+                  Load More Items
+                </button>
+              )}
+            </div>
+          )}
+          
+          {!watchlistPage.hasMore && userWatchlist.length > 20 && (
+            <div className="text-center mb-6">
+              <p className="text-blue-200">You've reached the end of your watchlist!</p>
+            </div>
+          )}
         </div>
       </div>
     );
