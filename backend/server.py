@@ -892,10 +892,12 @@ async def submit_vote(
 
 @api_router.get("/recommendations")
 async def get_recommendations(
+    offset: int = Query(0, ge=0, description="Number of items to skip"),
+    limit: int = Query(20, ge=1, le=100, description="Maximum number of items to return"),
     session_id: Optional[str] = Query(None),
     current_user: Optional[User] = Depends(get_current_user)
 ) -> List[Recommendation]:
-    """Get AI-powered recommendations with automatic generation and refresh"""
+    """Get AI-powered recommendations with pagination support"""
     # For authenticated users, use advanced ML recommendations with auto-generation
     if current_user:
         try:
@@ -906,36 +908,49 @@ async def get_recommendations(
             if len(user_votes) < 10:
                 return await get_simple_recommendations_fallback(user_votes)
             
-            # Try to get existing AI recommendations first
-            existing_recommendations = await get_stored_ai_recommendations(current_user.id)
+            # Try to get existing AI recommendations first (with pagination)
+            existing_recommendations = await get_stored_ai_recommendations(current_user.id, offset, limit)
             
-            # If we have existing recommendations, check if they need refresh
-            if existing_recommendations:
+            # If we have existing recommendations, check if they need refresh (only for first page)
+            if existing_recommendations and offset == 0:
                 should_refresh = await check_and_auto_refresh_recommendations(current_user.id)
-                if not should_refresh:
-                    return existing_recommendations
+                if should_refresh:
+                    # Generate new recommendations but still return current page while generation happens
+                    asyncio.create_task(auto_generate_ai_recommendations(current_user.id))
+                return existing_recommendations
+            elif existing_recommendations:
+                # For subsequent pages, just return the stored recommendations
+                return existing_recommendations
             
             # Generate new AI recommendations (either first time or refresh needed)
-            print(f"Generating recommendations for user {current_user.id} with {len(user_votes)} votes")
-            await auto_generate_ai_recommendations(current_user.id)
+            if offset == 0:  # Only generate for first page request
+                print(f"Generating recommendations for user {current_user.id} with {len(user_votes)} votes")
+                await auto_generate_ai_recommendations(current_user.id)
+                
+                # Get the newly generated recommendations
+                new_recommendations = await get_stored_ai_recommendations(current_user.id, offset, limit)
+                if new_recommendations:
+                    print(f"Successfully retrieved {len(new_recommendations)} stored recommendations for user {current_user.id}")
+                    return new_recommendations
             
-            # Get the newly generated recommendations
-            new_recommendations = await get_stored_ai_recommendations(current_user.id)
-            if new_recommendations:
-                print(f"Successfully retrieved {len(new_recommendations)} stored recommendations for user {current_user.id}")
-                return new_recommendations
-            
-            # Fallback to real-time generation if storage fails
-            print(f"Storage failed, falling back to real-time generation for user {current_user.id}")
-            return await generate_realtime_recommendations(current_user.id)
+            # Fallback to real-time generation if storage fails (only for first page)
+            if offset == 0:
+                print(f"Storage failed, falling back to real-time generation for user {current_user.id}")
+                return await generate_realtime_recommendations(current_user.id, limit)
+            else:
+                # For subsequent pages, return empty if no stored recommendations
+                return []
             
         except Exception as e:
             print(f"Error in AI recommendations: {str(e)}")
             import traceback
             traceback.print_exc()
-            # Fall back to simple recommendations on error
-            user_votes = await db.votes.find({"user_id": current_user.id}).to_list(length=None)
-            return await get_simple_recommendations_fallback(user_votes)
+            # Fall back to simple recommendations on error (only for first page)
+            if offset == 0:
+                user_votes = await db.votes.find({"user_id": current_user.id}).to_list(length=None)
+                return await get_simple_recommendations_fallback(user_votes)
+            else:
+                return []
     
     # For guest users, use simple vote-based recommendations
     elif session_id:
@@ -943,7 +958,7 @@ async def get_recommendations(
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
         user_votes = await db.votes.find({"session_id": session_id}).to_list(length=None)
-        return await get_simple_recommendations_fallback(user_votes)
+        return await get_simple_recommendations_fallback(user_votes, offset, limit)
     else:
         raise HTTPException(status_code=400, detail="Either login or provide session_id")
 
