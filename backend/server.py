@@ -1195,8 +1195,8 @@ async def generate_realtime_recommendations(user_id: str) -> List[Recommendation
         print(f"Error generating realtime recommendations: {str(e)}")
         return []
 
-async def get_simple_recommendations_fallback(user_votes: List[Dict]) -> List[Recommendation]:
-    """Fallback to simple vote-based recommendations"""
+async def get_simple_recommendations_fallback(user_votes: List[Dict], offset: int = 0, limit: int = 20) -> List[Recommendation]:
+    """Fallback to simple vote-based recommendations with pagination"""
     total_votes = len(user_votes)
     
     if total_votes < 10:  # Reduced from 36 for better UX
@@ -1210,14 +1210,15 @@ async def get_simple_recommendations_fallback(user_votes: List[Dict]) -> List[Re
     
     # Get top winners
     sorted_winners = sorted(win_counts.items(), key=lambda x: x[1], reverse=True)
-    top_winner_ids = [item[0] for item in sorted_winners[:10]]
     
-    # Get content details for top winners
+    # Apply pagination to the sorted winners
+    paginated_winners = sorted_winners[offset:offset + limit]
+    
+    # Get content details for paginated winners
     recommendations = []
-    for winner_id in top_winner_ids[:5]:  # Top 5 recommendations
+    for winner_id, win_count in paginated_winners:
         content = await db.content.find_one({"id": winner_id})
         if content:
-            win_count = win_counts[winner_id]
             total_appearances = sum(1 for vote in user_votes 
                                   if vote["winner_id"] == winner_id or vote["loser_id"] == winner_id)
             win_rate = (win_count / total_appearances) * 100 if total_appearances > 0 else 0
