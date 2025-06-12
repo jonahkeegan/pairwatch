@@ -1116,7 +1116,7 @@ async def auto_generate_ai_recommendations(user_id: str):
         import traceback
         traceback.print_exc()
 
-async def generate_realtime_recommendations(user_id: str) -> List[Recommendation]:
+async def generate_realtime_recommendations(user_id: str, limit: int = 20) -> List[Recommendation]:
     """Generate recommendations in real-time as fallback"""
     try:
         # Get all content for feature extraction
