@@ -217,10 +217,10 @@ def test_content_interaction_watched_comprehensive():
         auth_token=auth_token
     )
     
-    if not success:
-        logger.info("✅ Correctly rejected request with missing interaction_type")
-    else:
+    if success:
         logger.error("❌ Unexpectedly accepted request with missing interaction_type")
+    else:
+        logger.info("✅ Correctly rejected request with missing interaction_type")
     
     # Step 7: Test with invalid interaction_type
     logger.info("\n📋 Step 7: Test with invalid interaction_type")
