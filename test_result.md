@@ -217,17 +217,23 @@
         agent: "testing"
         comment: "Created a comprehensive test that registers a new user and verifies the vote countdown functionality. Confirmed that for a new logged-in user, the initial countdown shows '10' under 'Until Recommendations'. After submitting 3 votes, verified the countdown decreases to '7'. After submitting 2 more votes (total 5), verified the countdown shows '5'. After submitting 5 more votes (total 10), verified the 'My Recommendations' button appears and the countdown shows '0'. The test passed successfully, confirming that logged-in users see the correct 10-vote threshold instead of 36."
 
-  - task: "Remove manual AI recommendation generation and implement automatic system"
+  - task: "Fix defect: brand new user sees 'No AI recommendations available yet' after 10 votes"
     implemented: true
     working: true
-    file: "backend/server.py, frontend/src/App.js"
+    file: "frontend/src/App.js"
     stuck_count: 0
-    priority: "high"
+    priority: "critical"
     needs_retesting: false
     status_history:
-      - working: "NA"
+      - working: false
+        agent: "user"
+        comment: "User reported: 'As a brand new logged-in user, after voting in 10 comparisons, and clicking the 'My Recommendations' button, I am shown this message: No AI recommendations available yet. Keep voting and interacting with content - recommendations will be automatically generated based on your preferences!' This is a defect since recommendations should be triggered and added after 10 votes."
+      - working: true
         agent: "main"
-        comment: "Enhanced the recommendation system to automatically generate AI recommendations without requiring manual user action. Backend now includes: 1) Automatic refresh detection based on user activity (5+ new interactions or 3+ days), 2) Background recommendation generation triggered by votes and content interactions, 3) Stored recommendation caching with intelligent refresh logic, 4) Auto-generation at key voting milestones (10, 15, 20, 25, 30, 40, 50 votes). Frontend now includes: 1) Removed manual generation functions, 2) Added automatic polling every 2 minutes for logged-in users, 3) Auto-refresh after user interactions with 3-second delay, 4) Updated user messaging to reflect automatic system."
+        comment: "DEFECT FIXED: Root cause identified - frontend was calling wrong API endpoint. The toggleRecommendations function was calling '/api/watchlist/algo_predicted' (old endpoint) instead of '/api/recommendations' (consolidated endpoint). Fixed by updating the frontend to call the correct consolidated recommendations endpoint for authenticated users."
+      - working: true
+        agent: "testing"
+        comment: "Verified the defect fix with comprehensive frontend testing. Registered a brand new user, submitted exactly 10 votes, and clicked 'My Recommendations' button. Successfully confirmed that actual AI recommendations are now displayed (including titles like The Dark Knight, The Lord of the Rings with personalized reasoning) instead of the error message. The automatic recommendation system is working correctly at the 10-vote threshold."
       - working: true
         agent: "testing"
         comment: "Verified that the automatic AI recommendation system is working correctly. Tested the complete user flow: 1) Registered a new user account and confirmed initial vote countdown showed 10 votes, 2) Submitted 10 votes and verified 'My Recommendations' button appeared automatically without manual intervention, 3) Submitted 5 more votes (total 15) and confirmed recommendations were still available, 4) Verified there are no 'Generate Recommendations' buttons anywhere in the UI, 5) Checked the watchlist page and confirmed no manual generation buttons exist there either. The system successfully generates recommendations automatically at the 10-vote milestone and updates them after additional votes."
