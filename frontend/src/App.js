@@ -88,30 +88,74 @@ function App() {
     initializeApp();
   }, []);
 
-  // Automatic recommendation polling for authenticated users
-  useEffect(() => {
-    if (!user || !userStats?.recommendations_available) return;
-
-    // Set up automatic polling for recommendations every 2 minutes
-    const pollRecommendations = async () => {
-      try {
-        const response = await axios.get(`${API}/recommendations`);
-        if (response.data && response.data.length > 0) {
-          setRecommendations(response.data);
-        }
-      } catch (error) {
-        console.error('Auto-poll recommendations error:', error);
+  // Handle marking recommendation as watched
+  const handleRecommendationWatched = async (contentItem) => {
+    const contentId = contentItem.id;
+    
+    // Add to pending watched with undo timeout
+    setPendingWatched(prev => {
+      const newMap = new Map(prev);
+      
+      // Clear any existing timeout for this item
+      if (newMap.has(contentId)) {
+        clearTimeout(newMap.get(contentId));
       }
-    };
+      
+      // Set new timeout for auto-confirm after 5 seconds
+      const timeoutId = setTimeout(() => {
+        confirmWatched(contentId);
+      }, 5000);
+      
+      newMap.set(contentId, timeoutId);
+      return newMap;
+    });
+  };
 
-    // Initial load
-    pollRecommendations();
+  // Confirm watched and remove from recommendations
+  const confirmWatched = async (contentId) => {
+    try {
+      // Call backend to mark as watched
+      await axios.post(`${API}/content/interact`, {
+        content_id: contentId,
+        interaction_type: 'watched'
+      });
+      
+      // Add to watched set and remove from pending
+      setWatchedRecommendations(prev => new Set([...prev, contentId]));
+      setPendingWatched(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(contentId);
+        return newMap;
+      });
+      
+      // Remove from recommendations list
+      setRecommendations(prev => prev.filter(rec => {
+        const itemId = rec.content ? rec.content.id : rec.id;
+        return itemId !== contentId;
+      }));
+      
+    } catch (error) {
+      console.error('Error marking as watched:', error);
+      // Remove from pending on error
+      setPendingWatched(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(contentId);
+        return newMap;
+      });
+    }
+  };
 
-    // Set up polling interval (2 minutes)
-    const interval = setInterval(pollRecommendations, 2 * 60 * 1000);
-
-    return () => clearInterval(interval);
-  }, [user, userStats?.recommendations_available]);
+  // Undo watched marking
+  const undoWatched = (contentId) => {
+    setPendingWatched(prev => {
+      const newMap = new Map(prev);
+      if (newMap.has(contentId)) {
+        clearTimeout(newMap.get(contentId));
+        newMap.delete(contentId);
+      }
+      return newMap;
+    });
+  };
 
   // Infinite scroll hook
   const useInfiniteScroll = (callback) => {
