@@ -150,28 +150,58 @@ function App() {
         interaction_type: 'watched'
       });
       
-      // Add to watched set and remove from pending
+      // Add to watched set
       setWatchedRecommendations(prev => new Set([...prev, contentId]));
+      
+      // Clean up pending state
       setPendingWatched(prev => {
+        const newMap = new Map(prev);
+        if (newMap.has(contentId)) {
+          const { timeoutId, intervalId } = newMap.get(contentId);
+          clearTimeout(timeoutId);
+          clearInterval(intervalId);
+          newMap.delete(contentId);
+        }
+        return newMap;
+      });
+      
+      // Clean up countdown
+      setCountdowns(prev => {
         const newMap = new Map(prev);
         newMap.delete(contentId);
         return newMap;
       });
       
-      // Remove from recommendations list
+      // Remove from recommendations list immediately
       setRecommendations(prev => prev.filter(rec => {
         const itemId = rec.content ? rec.content.id : rec.id;
         return itemId !== contentId;
       }));
       
+      console.log(`Successfully marked content ${contentId} as watched and removed from list`);
+      
     } catch (error) {
       console.error('Error marking as watched:', error);
-      // Remove from pending on error
+      
+      // Clean up on error
       setPendingWatched(prev => {
+        const newMap = new Map(prev);
+        if (newMap.has(contentId)) {
+          const { timeoutId, intervalId } = newMap.get(contentId);
+          clearTimeout(timeoutId);
+          clearInterval(intervalId);
+          newMap.delete(contentId);
+        }
+        return newMap;
+      });
+      
+      setCountdowns(prev => {
         const newMap = new Map(prev);
         newMap.delete(contentId);
         return newMap;
       });
+      
+      alert('Failed to mark content as watched. Please try again.');
     }
   };
 
