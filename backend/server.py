@@ -1174,7 +1174,7 @@ async def generate_realtime_recommendations(user_id: str, limit: int = 20) -> Li
         
         # Generate recommendations
         ml_recommendations = recommendation_engine.generate_recommendations(
-            user_profile, content_df, watched_content_ids, num_recommendations=5
+            user_profile, content_df, watched_content_ids, num_recommendations=limit
         )
         
         # Convert to API format
