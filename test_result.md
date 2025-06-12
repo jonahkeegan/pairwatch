@@ -176,7 +176,7 @@
 
   - task: "Implement infinite scroll pagination for recommendations and watchlist"
     implemented: true
-    working: false
+    working: true
     file: "backend/server.py"
     stuck_count: 1
     priority: "high"
@@ -200,6 +200,9 @@
       - working: false
         agent: "testing"
         comment: "Found another issue in the watchlist pagination endpoint. On line 1354, the code is sorting by 'created_at', but the field in the UserWatchlist model is 'added_at'. This is likely causing the 500 error. The server logs show: 'ValueError: [TypeError(\"'ObjectId' object is not iterable\"), TypeError('vars() argument must have __dict__ attribute')]'. This error occurs when trying to serialize an ObjectId object to JSON. The fix would be to change line 1354 from '.sort(\"created_at\", -1)' to '.sort(\"added_at\", -1)'."
+      - working: true
+        agent: "testing"
+        comment: "Conducted comprehensive testing of the watchlist endpoint after the ObjectId serialization fix. Created a new test script that verifies the complete user flow: 1) Register a new user, 2) Submit 10+ votes to enable recommendations, 3) Add multiple items to the user's watchlist, 4) Test the watchlist endpoint with various pagination parameters. All tests passed successfully. The watchlist endpoint now returns the expected response with proper pagination metadata and watchlist items. The ObjectId serialization issue has been resolved, and the endpoint correctly handles all edge cases including invalid parameters and offsets beyond available items. Response times are good (under 0.2s) even with multiple items in the watchlist."
 
 ## frontend:
   - task: "Rename 'View My Recommendations' to 'My Recommendations'"
