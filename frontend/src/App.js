@@ -846,15 +846,43 @@ function App() {
   };
 
   const toggleWatchlist = async () => {
-    if (!user) {
-      alert('Please login to view your watchlists');
+    if (showWatchlist) {
+      setShowWatchlist(false);
       return;
     }
-    
-    if (!showWatchlist) {
-      await loadWatchlists();
+
+    if (!user) {
+      alert('Please login to view your watchlist');
+      return;
     }
-    setShowWatchlist(!showWatchlist);
+
+    try {
+      setLoading(true);
+      
+      // Reset pagination and watchlist for fresh load
+      setUserWatchlist([]);
+      setWatchlistPage({ offset: 0, hasMore: true, loading: false });
+
+      // Load initial watchlist items with pagination
+      const response = await axios.get(`${API}/watchlist/user_defined?offset=0&limit=20`);
+      const items = response.data.items || [];
+      
+      setUserWatchlist(items);
+      setWatchlistPage({
+        offset: 20,
+        hasMore: response.data.has_more || false,
+        loading: false
+      });
+      
+    } catch (error) {
+      console.error('Failed to load watchlist:', error);
+      alert('Failed to load watchlist. Please try again.');
+      return;
+    } finally {
+      setLoading(false);
+    }
+    
+    setShowWatchlist(true);
   };
 
   const handleRecommendationAction = async (item, action) => {
