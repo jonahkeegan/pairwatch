@@ -1145,10 +1145,40 @@ function App() {
             </div>
             
             {/* Watchlist Header */}
-            <div className="flex justify-between items-center mb-8">
-              <div>
+            <div className="mb-8">
+              <div className="text-center mb-6">
                 <h2 className="text-2xl font-bold text-white mb-2">My Watchlist ({userWatchlist.length} items)</h2>
                 <p className="text-blue-200">Movies and shows you want to watch</p>
+              </div>
+              
+              {/* Action Buttons at Top */}
+              <div className="flex justify-center space-x-4">
+                <button
+                  onClick={toggleWatchlist}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors"
+                >
+                  Back to Voting
+                </button>
+                {watchlistPage.hasMore && userWatchlist.length > 0 && (
+                  <button
+                    onClick={loadMoreWatchlist}
+                    disabled={watchlistPage.loading}
+                    className={`font-bold py-3 px-6 rounded-lg transition-colors ${
+                      watchlistPage.loading
+                        ? 'bg-gray-500 text-gray-300 cursor-not-allowed'
+                        : 'bg-purple-600 hover:bg-purple-700 text-white'
+                    }`}
+                  >
+                    {watchlistPage.loading ? (
+                      <div className="flex items-center">
+                        <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Loading More...
+                      </div>
+                    ) : (
+                      'Load More Items'
+                    )}
+                  </button>
+                )}
               </div>
             </div>
             
