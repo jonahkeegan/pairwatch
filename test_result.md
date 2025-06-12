@@ -43,6 +43,9 @@
       - working: false
         agent: "testing"
         comment: "Found a bug in the watchlist pagination endpoint. The endpoint returns a 500 error due to a KeyError: 'created_at'. The UserWatchlist model has a field called 'added_at' but the get_watchlist function is trying to access 'created_at'. This needs to be fixed by changing line 1363 in server.py from 'added_at': item['created_at'] to 'added_at': item['added_at']."
+      - working: false
+        agent: "testing"
+        comment: "Conducted comprehensive frontend testing of infinite scroll implementation. The recommendations infinite scroll works correctly - initial load shows 20 items, clicking 'Load More Recommendations' loads 40 more items (total 60), and the system appears to support loading up to 1000 recommendations as specified. However, the watchlist functionality has a critical issue - while adding items to watchlist appears to work in the UI (12 items added successfully), there are 500 errors when trying to load the watchlist page. Console logs confirm the same error identified previously: 'Failed to load resource: the server responded with a status of 500' for /api/watchlist/user_defined endpoint. This confirms the backend issue where the get_watchlist function is trying to access 'created_at' instead of 'added_at'."
 ## frontend:
 ##   - task: "Task name"
 ##     implemented: true
@@ -75,6 +78,8 @@
 
   - agent: "testing"
     message: "Completed testing of infinite scroll pagination for both recommendations and watchlist endpoints. The recommendations pagination works correctly with offset and limit parameters. First, second, and third pages return different sets of recommendations without duplicates. Performance is good with response times under 0.1s for standard page sizes. The system can generate up to 1000 recommendations as specified. However, found a bug in the watchlist pagination endpoint. The endpoint returns a 500 error due to a KeyError: 'created_at'. The UserWatchlist model has a field called 'added_at' but the get_watchlist function is trying to access 'created_at'. This needs to be fixed by changing line 1363 in server.py from 'added_at': item['created_at'] to 'added_at': item['added_at']."
+  - agent: "testing"
+    message: "Conducted comprehensive frontend testing of the infinite scroll implementation. The recommendations infinite scroll works correctly - initial load shows 20 items, clicking 'Load More Recommendations' loads 40 more items (total 60), and the system appears to support loading up to 1000 recommendations as specified. However, the watchlist functionality has a critical issue - while adding items to watchlist appears to work in the UI (12 items added successfully), there are 500 errors when trying to load the watchlist page. Console logs confirm the same error identified previously: 'Failed to load resource: the server responded with a status of 500' for /api/watchlist/user_defined endpoint. This confirms the backend issue where the get_watchlist function is trying to access 'created_at' instead of 'added_at'."
 ##     -agent: "main"  # or "testing" or "user"
 ##     -message: "Communication message between agents"
 
@@ -158,6 +163,27 @@
       - working: true
         agent: "testing"
         comment: "Specifically tested the stats endpoint for authenticated users to verify the 10-vote threshold. Created a new test function that registers a new user, checks initial stats (confirmed votes_until_recommendations = 10), submits 3 votes, verifies countdown (votes_until_recommendations = 7), and then submits 7 more votes to reach the threshold. Final verification confirmed votes_until_recommendations = 0 and recommendations_available = true after 10 votes. The test passed successfully, confirming that new logged-in users see the correct 10-vote threshold instead of 36."
+
+  - task: "Implement infinite scroll pagination for recommendations and watchlist"
+    implemented: true
+    working: false
+    file: "backend/server.py"
+    stuck_count: 1
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented pagination support for both recommendations and watchlist endpoints with offset and limit parameters. Added support for up to 1000 items with smooth progressive loading."
+      - working: false
+        agent: "testing"
+        comment: "Tested pagination for recommendations endpoint. Pagination works correctly with offset and limit parameters. First, second, and third pages return different sets of recommendations without duplicates. Performance is good with response times under 0.1s for standard page sizes. The system can generate up to 1000 recommendations as specified."
+      - working: false
+        agent: "testing"
+        comment: "Found a bug in the watchlist pagination endpoint. The endpoint returns a 500 error due to a KeyError: 'created_at'. The UserWatchlist model has a field called 'added_at' but the get_watchlist function is trying to access 'created_at'. This needs to be fixed by changing line 1363 in server.py from 'added_at': item['created_at'] to 'added_at': item['added_at']."
+      - working: false
+        agent: "testing"
+        comment: "Conducted comprehensive frontend testing of infinite scroll implementation. The recommendations infinite scroll works correctly - initial load shows 20 items, clicking 'Load More Recommendations' loads 40 more items (total 60), and the system appears to support loading up to 1000 recommendations as specified. However, the watchlist functionality has a critical issue - while adding items to watchlist appears to work in the UI (12 items added successfully), there are 500 errors when trying to load the watchlist page. Console logs confirm the same error identified previously: 'Failed to load resource: the server responded with a status of 500' for /api/watchlist/user_defined endpoint. This confirms the backend issue where the get_watchlist function is trying to access 'created_at' instead of 'added_at'."
 
 ## frontend:
   - task: "Rename 'View My Recommendations' to 'My Recommendations'"
@@ -256,6 +282,21 @@
         agent: "testing"
         comment: "Verified that the automatic AI recommendation system is working correctly. Tested the complete user flow: 1) Registered a new user account and confirmed initial vote countdown showed 10 votes, 2) Submitted 10 votes and verified 'My Recommendations' button appeared automatically without manual intervention, 3) Submitted 5 more votes (total 15) and confirmed recommendations were still available, 4) Verified there are no 'Generate Recommendations' buttons anywhere in the UI, 5) Checked the watchlist page and confirmed no manual generation buttons exist there either. The system successfully generates recommendations automatically at the 10-vote milestone and updates them after additional votes."
 
+  - task: "Implement infinite scroll UI for recommendations and watchlist"
+    implemented: true
+    working: false
+    file: "frontend/src/App.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented infinite scroll UI for both recommendations and watchlist pages. Added pagination state management, loading indicators, and 'Load More' buttons. Implemented both scroll-triggered and button-triggered loading for better UX."
+      - working: false
+        agent: "testing"
+        comment: "Conducted comprehensive frontend testing of infinite scroll implementation. The recommendations infinite scroll works correctly - initial load shows 20 items, clicking 'Load More Recommendations' loads 40 more items (total 60), and the system appears to support loading up to 1000 recommendations as specified. However, the watchlist functionality has a critical issue - while adding items to watchlist appears to work in the UI (12 items added successfully), there are 500 errors when trying to load the watchlist page. Console logs confirm the same error identified previously: 'Failed to load resource: the server responded with a status of 500' for /api/watchlist/user_defined endpoint. This confirms the backend issue where the get_watchlist function is trying to access 'created_at' instead of 'added_at'."
+
 ## metadata:
   created_by: "main_agent"
   version: "1.0"
@@ -269,7 +310,9 @@
     - "Move 'My Watchlist' button from watchlists page to home page"
     - "Remove dual watchlist interface confusion"
     - "Remove manual AI recommendation generation and implement automatic system"
-  stuck_tasks: []
+    - "Implement infinite scroll pagination for recommendations and watchlist"
+  stuck_tasks: 
+    - "Implement infinite scroll pagination for recommendations and watchlist"
   test_all: true
   test_priority: "high_first"
 
@@ -302,3 +345,9 @@
     message: "Conducted a final verification test for the specific defect fix: 'As a brand new logged-in user, after voting in 10 comparisons, and clicking the 'My Recommendations' button, I should see AI recommendations instead of the message 'No AI recommendations available yet.'' Created a comprehensive test script that: 1) Registered a brand new user with a unique email, 2) Verified the initial vote countdown showed 10 votes, 3) Submitted exactly 10 votes and confirmed the countdown decreased correctly with each vote, 4) Verified the 'My Recommendations' button appeared after the 10th vote, 5) Clicked the 'My Recommendations' button immediately after the 10th vote, 6) Confirmed actual AI recommendations were displayed with movie titles and personalized reasoning, 7) Verified the error message 'No AI recommendations available yet' did NOT appear, 8) Submitted an 11th vote and checked recommendations again after a short delay to verify consistency. The test passed successfully, confirming that the defect has been fixed. Screenshots captured show the recommendations page with actual content (The Dark Knight, The Lord of the Rings, etc.) and personalized recommendation reasons. The automatic recommendation system is working correctly at the 10-vote threshold."
   - agent: "main"
     message: "CRITICAL DEFECT FIXED: Identified and resolved the root cause of why brand new users with 10 votes were seeing 'No AI recommendations available yet' instead of actual recommendations. The issue was in the frontend code - the toggleRecommendations function was calling the wrong API endpoint (/api/watchlist/algo_predicted instead of /api/recommendations). This was leftover code from before the recommendation system consolidation. Fixed by updating the frontend to call the correct consolidated endpoint. Backend testing confirmed recommendations were being generated correctly, frontend testing confirmed the fix works and users now see actual AI recommendations after 10 votes."
+  - agent: "main"
+    message: "Implemented infinite scroll pagination for both recommendations and watchlist with 1000-item limits. Added offset and limit parameters to API endpoints, implemented frontend pagination state management, added loading indicators, and 'Load More' buttons. Implemented both scroll-triggered and button-triggered loading for better UX. Ready for testing to verify the implementation works correctly."
+  - agent: "testing"
+    message: "Completed testing of infinite scroll pagination for both recommendations and watchlist endpoints. The recommendations pagination works correctly with offset and limit parameters. First, second, and third pages return different sets of recommendations without duplicates. Performance is good with response times under 0.1s for standard page sizes. The system can generate up to 1000 recommendations as specified. However, found a bug in the watchlist pagination endpoint. The endpoint returns a 500 error due to a KeyError: 'created_at'. The UserWatchlist model has a field called 'added_at' but the get_watchlist function is trying to access 'created_at'. This needs to be fixed by changing line 1363 in server.py from 'added_at': item['created_at'] to 'added_at': item['added_at']."
+  - agent: "testing"
+    message: "Conducted comprehensive frontend testing of the infinite scroll implementation. The recommendations infinite scroll works correctly - initial load shows 20 items, clicking 'Load More Recommendations' loads 40 more items (total 60), and the system appears to support loading up to 1000 recommendations as specified. However, the watchlist functionality has a critical issue - while adding items to watchlist appears to work in the UI (12 items added successfully), there are 500 errors when trying to load the watchlist page. Console logs confirm the same error identified previously: 'Failed to load resource: the server responded with a status of 500' for /api/watchlist/user_defined endpoint. This confirms the backend issue where the get_watchlist function is trying to access 'created_at' instead of 'added_at'."
