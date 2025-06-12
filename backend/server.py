@@ -1357,19 +1357,23 @@ async def get_watchlist(
     for item in watchlist_items:
         content = await db.content.find_one({"id": item["content_id"]})
         if content:
+            # Convert MongoDB documents to plain dictionaries and remove ObjectId fields
+            item_dict = {k: v for k, v in item.items() if k != "_id"}
+            content_dict = {k: v for k, v in content.items() if k != "_id"}
+            
             detailed_item = {
-                "watchlist_id": item["id"],
-                "content": content,
-                "added_at": item["added_at"],
-                "priority": item.get("priority", 1)
+                "watchlist_id": item_dict["id"],
+                "content": content_dict,
+                "added_at": item_dict["added_at"],
+                "priority": item_dict.get("priority", 1)
             }
             
             # Add algo-specific fields
             if watchlist_type == "algo_predicted":
                 detailed_item.update({
-                    "recommendation_score": item.get("recommendation_score", 0),
-                    "reasoning": item.get("reasoning", "AI-recommended based on your preferences"),
-                    "confidence": item.get("confidence", 0.5)
+                    "recommendation_score": item_dict.get("recommendation_score", 0),
+                    "reasoning": item_dict.get("reasoning", "AI-recommended based on your preferences"),
+                    "confidence": item_dict.get("confidence", 0.5)
                 })
             
             detailed_watchlist.append(detailed_item)
