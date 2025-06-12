@@ -1086,9 +1086,9 @@ async def auto_generate_ai_recommendations(user_id: str):
         
         watched_content_ids.extend([i["content_id"] for i in not_interested])
         
-        # Generate recommendations
+        # Generate recommendations (increase to support up to 1000 items)
         ml_recommendations = recommendation_engine.generate_recommendations(
-            user_profile, content_df, watched_content_ids, num_recommendations=10
+            user_profile, content_df, watched_content_ids, num_recommendations=1000
         )
         
         if not ml_recommendations:
