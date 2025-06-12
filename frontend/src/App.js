@@ -93,21 +93,50 @@ function App() {
   const handleRecommendationWatched = async (contentItem) => {
     const contentId = contentItem.id;
     
-    // Add to pending watched with undo timeout
+    // Clear any existing countdown and timeout for this item
     setPendingWatched(prev => {
       const newMap = new Map(prev);
-      
-      // Clear any existing timeout for this item
       if (newMap.has(contentId)) {
-        clearTimeout(newMap.get(contentId));
+        clearTimeout(newMap.get(contentId).timeoutId);
+        clearInterval(newMap.get(contentId).intervalId);
       }
-      
-      // Set new timeout for auto-confirm after 5 seconds
-      const timeoutId = setTimeout(() => {
-        confirmWatched(contentId);
-      }, 5000);
-      
-      newMap.set(contentId, timeoutId);
+      return newMap;
+    });
+    
+    setCountdowns(prev => {
+      const newMap = new Map(prev);
+      newMap.delete(contentId);
+      return newMap;
+    });
+    
+    // Start countdown at 5 seconds
+    setCountdowns(prev => new Map([...prev, [contentId, 5]]));
+    
+    // Create interval for countdown display
+    const intervalId = setInterval(() => {
+      setCountdowns(prev => {
+        const newMap = new Map(prev);
+        const currentCount = newMap.get(contentId);
+        if (currentCount > 1) {
+          newMap.set(contentId, currentCount - 1);
+          return newMap;
+        } else {
+          newMap.delete(contentId);
+          return newMap;
+        }
+      });
+    }, 1000);
+    
+    // Set timeout for auto-confirm after 5 seconds
+    const timeoutId = setTimeout(() => {
+      clearInterval(intervalId);
+      confirmWatched(contentId);
+    }, 5000);
+    
+    // Store both timeout and interval IDs
+    setPendingWatched(prev => {
+      const newMap = new Map(prev);
+      newMap.set(contentId, { timeoutId, intervalId });
       return newMap;
     });
   };
