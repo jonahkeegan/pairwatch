@@ -1330,52 +1330,57 @@ async def content_interaction(
 @api_router.get("/watchlist/{watchlist_type}")
 async def get_watchlist(
     watchlist_type: str,
+    offset: int = Query(0, ge=0, description="Number of items to skip"),
+    limit: int = Query(20, ge=1, le=100, description="Maximum number of items to return"),
     current_user: User = Depends(get_current_user)
 ):
-    """Get user's watchlist (user_defined or algo_predicted)"""
+    """Get user's watchlist with pagination support (user_defined or algo_predicted)"""
     if not current_user:
         raise HTTPException(status_code=401, detail="Authentication required")
     
     if watchlist_type not in ["user_defined", "algo_predicted"]:
         raise HTTPException(status_code=400, detail="Invalid watchlist type")
-    
-    # Get watchlist items
+
+    # Get total count first
+    total_count = await db.user_watchlist.count_documents({
+        "user_id": current_user.id,
+        "watchlist_type": watchlist_type
+    })
+
+    # Get watchlist items with pagination
     watchlist_items = await db.user_watchlist.find({
         "user_id": current_user.id,
         "watchlist_type": watchlist_type
-    }).sort("added_at", -1).to_list(length=100)
-    
-    # Get content details for each item
+    }).sort("created_at", -1).skip(offset).limit(limit).to_list(length=limit)
+
     detailed_watchlist = []
     for item in watchlist_items:
         content = await db.content.find_one({"id": item["content_id"]})
         if content:
             detailed_item = {
                 "watchlist_id": item["id"],
-                "content": ContentItem(**content),
-                "added_at": item["added_at"],
+                "content": content,
+                "added_at": item["created_at"],
                 "priority": item.get("priority", 1)
             }
             
-            # For algo_predicted, add recommendation details
+            # Add algo-specific fields
             if watchlist_type == "algo_predicted":
-                algo_rec = await db.algo_recommendations.find_one({
-                    "user_id": current_user.id,
-                    "content_id": item["content_id"]
+                detailed_item.update({
+                    "recommendation_score": item.get("recommendation_score", 0),
+                    "reasoning": item.get("reasoning", "AI-recommended based on your preferences"),
+                    "confidence": item.get("confidence", 0.5)
                 })
-                if algo_rec:
-                    detailed_item.update({
-                        "recommendation_score": algo_rec["recommendation_score"],
-                        "reasoning": algo_rec["reasoning"],
-                        "confidence": algo_rec["confidence"]
-                    })
             
             detailed_watchlist.append(detailed_item)
-    
+
     return {
         "watchlist_type": watchlist_type,
         "items": detailed_watchlist,
-        "total_count": len(detailed_watchlist)
+        "total_count": total_count,
+        "offset": offset,
+        "limit": limit,
+        "has_more": (offset + len(detailed_watchlist)) < total_count
     }
 
 @api_router.delete("/watchlist/{watchlist_id}")
