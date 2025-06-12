@@ -1449,16 +1449,26 @@ function App() {
           </div>
           
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
-            {recommendations.map((rec, index) => {
+            {recommendations.filter(rec => {
+              const itemId = rec.content ? rec.content.id : rec.id;
+              return !watchedRecommendations.has(itemId);
+            }).map((rec, index) => {
               // Handle both old recommendation format and new ML watchlist format
               const isMLRecommendation = rec.content && rec.reasoning;
               const contentItem = isMLRecommendation ? rec.content : rec;
               const reasoning = isMLRecommendation ? rec.reasoning : rec.reason;
               const poster = contentItem.poster;
               const title = contentItem.title;
+              const contentId = contentItem.id;
+              const isPendingWatched = pendingWatched.has(contentId);
               
               return (
-                <div key={index} className="bg-white bg-opacity-10 backdrop-blur-lg rounded-xl overflow-hidden text-white hover:bg-opacity-20 transition-all">
+                <div 
+                  key={index} 
+                  className={`bg-white bg-opacity-10 backdrop-blur-lg rounded-xl overflow-hidden text-white hover:bg-opacity-20 transition-all ${
+                    isPendingWatched ? 'ring-2 ring-green-400' : ''
+                  }`}
+                >
                   <div className="relative group">
                     {poster ? (
                       <>
@@ -1493,7 +1503,33 @@ function App() {
                   </div>
                   <div className="p-6">
                     <h3 className="text-xl font-bold mb-2">{title}</h3>
-                    <p className="text-blue-200 text-sm">{reasoning}</p>
+                    <p className="text-blue-200 text-sm mb-4">{reasoning}</p>
+                    
+                    {/* Watched Action */}
+                    {isPendingWatched ? (
+                      <div className="bg-green-600 bg-opacity-20 border border-green-400 rounded-lg p-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center">
+                            <div className="text-green-400 mr-2">✓</div>
+                            <span className="text-green-300 text-sm font-medium">Marked as Watched</span>
+                          </div>
+                          <button
+                            onClick={() => undoWatched(contentId)}
+                            className="text-white bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-xs transition-colors"
+                          >
+                            Undo
+                          </button>
+                        </div>
+                        <div className="text-xs text-green-200 mt-1">Will be removed in 5 seconds...</div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => handleRecommendationWatched(contentItem)}
+                        className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-colors"
+                      >
+                        ✓ Mark as Watched
+                      </button>
+                    )}
                   </div>
                 </div>
               );
