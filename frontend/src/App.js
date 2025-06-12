@@ -28,6 +28,10 @@ function App() {
   const [userWatchlist, setUserWatchlist] = useState([]);
   const [algoWatchlist, setAlgoWatchlist] = useState([]);
   const [showWatchlist, setShowWatchlist] = useState(false);
+  
+  // Infinite scroll states
+  const [recommendationsPage, setRecommendationsPage] = useState({ offset: 0, hasMore: true, loading: false });
+  const [watchlistPage, setWatchlistPage] = useState({ offset: 0, hasMore: true, loading: false });
   const [contentInteractions, setContentInteractions] = useState({}); // Track interactions per content ID
   const [removedRecommendations, setRemovedRecommendations] = useState(new Set()); // Track removed recommendation IDs
   const [undoModal, setUndoModal] = useState({ show: false, item: null, action: null }); // Undo modal state
