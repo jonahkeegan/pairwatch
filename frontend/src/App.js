@@ -109,25 +109,82 @@ function App() {
     return () => clearInterval(interval);
   }, [user, userStats?.recommendations_available]);
 
-  // Auto-refresh recommendations after user interactions
-  useEffect(() => {
-    if (user && userStats?.recommendations_available) {
-      // Refresh recommendations after a short delay when stats change
-      // This helps capture newly generated recommendations after votes/interactions
-      const timeout = setTimeout(async () => {
-        try {
-          const response = await axios.get(`${API}/recommendations`);
-          if (response.data && response.data.length > 0) {
-            setRecommendations(response.data);
-          }
-        } catch (error) {
-          console.error('Auto-refresh recommendations error:', error);
-        }
-      }, 3000); // 3 second delay to allow background generation
+  // Infinite scroll hook
+  const useInfiniteScroll = (callback) => {
+    useEffect(() => {
+      const handleScroll = () => {
+        if (window.innerHeight + document.documentElement.scrollTop !== document.documentElement.offsetHeight) return;
+        callback();
+      };
 
-      return () => clearTimeout(timeout);
+      window.addEventListener('scroll', handleScroll);
+      return () => window.removeEventListener('scroll', handleScroll);
+    }, [callback]);
+  };
+
+  // Load more recommendations with pagination
+  const loadMoreRecommendations = async () => {
+    if (recommendationsPage.loading || !recommendationsPage.hasMore) return;
+
+    setRecommendationsPage(prev => ({ ...prev, loading: true }));
+
+    try {
+      const params = new URLSearchParams({
+        offset: recommendationsPage.offset.toString(),
+        limit: '20'
+      });
+
+      if (!user && sessionId) {
+        params.append('session_id', sessionId);
+      }
+
+      const response = await axios.get(`${API}/recommendations?${params}`);
+      const newRecommendations = response.data;
+
+      setRecommendations(prev => [...prev, ...newRecommendations]);
+      setRecommendationsPage(prev => ({
+        offset: prev.offset + 20,
+        hasMore: newRecommendations.length === 20,
+        loading: false
+      }));
+    } catch (error) {
+      console.error('Error loading more recommendations:', error);
+      setRecommendationsPage(prev => ({ ...prev, loading: false }));
     }
-  }, [userStats?.total_votes]); // Trigger when vote count changes
+  };
+
+  // Load more watchlist items with pagination
+  const loadMoreWatchlist = async () => {
+    if (watchlistPage.loading || !watchlistPage.hasMore || !user) return;
+
+    setWatchlistPage(prev => ({ ...prev, loading: true }));
+
+    try {
+      const response = await axios.get(
+        `${API}/watchlist/user_defined?offset=${watchlistPage.offset}&limit=20`
+      );
+      
+      const newItems = response.data.items || [];
+      setUserWatchlist(prev => [...prev, ...newItems]);
+      setWatchlistPage(prev => ({
+        offset: prev.offset + 20,
+        hasMore: response.data.has_more || false,
+        loading: false
+      }));
+    } catch (error) {
+      console.error('Error loading more watchlist items:', error);
+      setWatchlistPage(prev => ({ ...prev, loading: false }));
+    }
+  };
+
+  // Use infinite scroll for recommendations
+  useInfiniteScroll(() => {
+    if (showRecommendations) {
+      loadMoreRecommendations();
+    } else if (showWatchlist) {
+      loadMoreWatchlist();
+    }
+  });
 
   const getCurrentUser = async () => {
     try {
