@@ -144,11 +144,27 @@ function App() {
   };
 
   // Confirm watched and remove from recommendations
-  const confirmWatched = async (contentId) => {
+  const confirmWatched = async (contentId, imdbId) => {
     try {
+      // For the API call, we need to get the content's internal ID using IMDB ID
+      let apiContentId = contentId;
+      
+      // If we only have IMDB ID, try to get the content details first
+      if (imdbId && !contentId.startsWith('content_')) {
+        try {
+          const contentResponse = await axios.get(`${API}/content/${imdbId}`);
+          if (contentResponse.data && contentResponse.data.id) {
+            apiContentId = contentResponse.data.id;
+            console.log(`Using content ID ${apiContentId} for IMDB ID ${imdbId}`);
+          }
+        } catch (error) {
+          console.warn(`Could not get content ID for IMDB ID ${imdbId}, using original: ${contentId}`);
+        }
+      }
+      
       // Call backend to mark as watched
       await axios.post(`${API}/content/interact`, {
-        content_id: contentId,
+        content_id: apiContentId,
         interaction_type: 'watched'
       });
       
@@ -176,7 +192,9 @@ function App() {
       
       // Remove from recommendations list immediately
       setRecommendations(prev => prev.filter(rec => {
-        const itemId = rec.content ? rec.content.id : rec.id;
+        const isMLRecommendation = rec.content && rec.reasoning;
+        const contentItem = isMLRecommendation ? rec.content : rec;
+        const itemId = contentItem.id || rec.imdb_id;
         return itemId !== contentId;
       }));
       
