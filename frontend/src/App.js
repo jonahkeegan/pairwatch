@@ -1529,7 +1529,7 @@ function App() {
           
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
             {recommendations.filter(rec => {
-              const itemId = rec.content ? rec.content.id : rec.id;
+              const itemId = rec.content ? rec.content.id : rec.id || rec.imdb_id;
               return !watchedRecommendations.has(itemId);
             }).map((rec, index) => {
               // Handle both old recommendation format and new ML watchlist format
@@ -1538,12 +1538,13 @@ function App() {
               const reasoning = isMLRecommendation ? rec.reasoning : rec.reason;
               const poster = contentItem.poster;
               const title = contentItem.title;
-              const contentId = contentItem.id;
+              // Use a unique identifier - try id first, then imdb_id as fallback
+              const contentId = contentItem.id || rec.imdb_id;
               const isPendingWatched = pendingWatched.has(contentId);
               
               return (
                 <div 
-                  key={index} 
+                  key={`rec-${contentId}-${index}`}
                   className={`bg-white bg-opacity-10 backdrop-blur-lg rounded-xl overflow-hidden text-white hover:bg-opacity-20 transition-all ${
                     isPendingWatched ? 'ring-2 ring-green-400' : ''
                   }`}
@@ -1609,7 +1610,7 @@ function App() {
                       </div>
                     ) : (
                       <button
-                        onClick={() => handleRecommendationWatched(contentItem)}
+                        onClick={() => handleRecommendationWatched(rec)}
                         className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-colors"
                       >
                         ✓ Mark as Watched
