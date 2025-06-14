@@ -90,8 +90,10 @@ function App() {
   }, []);
 
   // Handle marking recommendation as watched
-  const handleRecommendationWatched = async (contentItem) => {
-    const contentId = contentItem.id;
+  const handleRecommendationWatched = async (rec) => {
+    const isMLRecommendation = rec.content && rec.reasoning;
+    const contentItem = isMLRecommendation ? rec.content : rec;
+    const contentId = contentItem.id || rec.imdb_id;
     
     // Clear any existing countdown and timeout for this item
     setPendingWatched(prev => {
@@ -130,7 +132,7 @@ function App() {
     // Set timeout for auto-confirm after 5 seconds
     const timeoutId = setTimeout(() => {
       clearInterval(intervalId);
-      confirmWatched(contentId);
+      confirmWatched(contentId, rec.imdb_id);
     }, 5000);
     
     // Store both timeout and interval IDs
