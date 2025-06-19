@@ -245,6 +245,29 @@ function App() {
     });
   };
 
+  // Deduplication helper function
+  const deduplicateRecommendations = (recs) => {
+    const seen = new Set();
+    const unique = [];
+    
+    for (const rec of recs) {
+      const isMLRecommendation = rec.content && rec.reasoning;
+      const contentItem = isMLRecommendation ? rec.content : rec;
+      const contentId = contentItem.id || rec.imdb_id;
+      const title = contentItem.title || rec.title;
+      
+      // Create a unique key based on content ID and title
+      const uniqueKey = `${contentId}_${title.toLowerCase().trim()}`;
+      
+      if (!seen.has(uniqueKey)) {
+        seen.add(uniqueKey);
+        unique.push(rec);
+      }
+    }
+    
+    return unique;
+  };
+
   // Infinite scroll hook
   const useInfiniteScroll = (callback) => {
     useEffect(() => {
