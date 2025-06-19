@@ -277,7 +277,21 @@ function App() {
       const response = await axios.get(`${API}/recommendations?${params}`);
       const newRecommendations = response.data;
 
-      setRecommendations(prev => [...prev, ...newRecommendations]);
+      // Deduplication: filter out any recommendations that are already in the list
+      const existingIds = new Set(recommendations.map(rec => {
+        const isMLRecommendation = rec.content && rec.reasoning;
+        const contentItem = isMLRecommendation ? rec.content : rec;
+        return contentItem.id || rec.imdb_id;
+      }));
+
+      const uniqueNewRecommendations = newRecommendations.filter(rec => {
+        const isMLRecommendation = rec.content && rec.reasoning;
+        const contentItem = isMLRecommendation ? rec.content : rec;
+        const contentId = contentItem.id || rec.imdb_id;
+        return !existingIds.has(contentId);
+      });
+
+      setRecommendations(prev => [...prev, ...uniqueNewRecommendations]);
       setRecommendationsPage(prev => ({
         offset: prev.offset + 20,
         hasMore: newRecommendations.length === 20,
