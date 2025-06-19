@@ -41,6 +41,18 @@ backend:
         agent: "testing"
         comment: "Conducted comprehensive deduplication testing for 'My Recommendations' page. Created a test user, submitted 10+ votes to generate recommendations, and examined all recommendation cards displayed. No duplicate movie or TV show titles were found on the first page of recommendations. The deduplication implementation is working correctly, ensuring each title appears only once in the recommendations list. The user experience is clean and professional."
 
+  - task: "Implement watched content exclusion functionality"
+    implemented: true
+    working: false
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: false
+        agent: "testing"
+        comment: "Conducted comprehensive testing of the 'watched content exclusion' functionality. Created a detailed test script that follows the exact scenario from the review request: 1) Registered a new user, 2) Submitted 15 votes to generate recommendations, 3) Got initial recommendations and recorded the first 3 items, 4) Marked the first recommendation as 'watched' using the /api/content/interact endpoint, 5) Verified the interaction was stored correctly in the user_interactions collection, 6) Called /api/recommendations again immediately. Found an issue where the watched content still appeared in the immediate recommendations. However, after forcing regeneration by submitting 5 more votes and waiting 5 seconds, the watched content was properly excluded from the recommendations. The exclusion persisted across multiple pages and even after logging out and back in (cross-session persistence). This indicates that the exclusion logic works correctly during recommendation regeneration but not for existing recommendations. The fix would be to modify the get_stored_ai_recommendations function to filter out watched content from existing recommendations before returning them."
+
 frontend:
   - task: "Replace simple recommendations with AdvancedRecommendationEngine"
     implemented: true
