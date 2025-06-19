@@ -1272,13 +1272,28 @@ async def get_simple_recommendations_fallback(user_votes: List[Dict], offset: in
     sorted_winners = sorted(win_counts.items(), key=lambda x: x[1], reverse=True)
     
     # Apply pagination to the sorted winners
-    paginated_winners = sorted_winners[offset:offset + limit]
+    paginated_winners = sorted_winners[offset:offset + limit * 2]  # Get more than needed to account for duplicates
     
-    # Get content details for paginated winners
+    # Get content details for paginated winners with deduplication
     recommendations = []
+    seen_content_ids = set()
+    seen_imdb_ids = set()
+    
     for winner_id, win_count in paginated_winners:
+        # Skip if we've already seen this content ID
+        if winner_id in seen_content_ids:
+            continue
+            
         content = await db.content.find_one({"id": winner_id})
         if content:
+            # Skip if we've already seen this IMDB ID
+            if content.get("imdb_id") in seen_imdb_ids:
+                continue
+                
+            # Add to tracking sets
+            seen_content_ids.add(winner_id)
+            seen_imdb_ids.add(content.get("imdb_id"))
+            
             total_appearances = sum(1 for vote in user_votes 
                                   if vote["winner_id"] == winner_id or vote["loser_id"] == winner_id)
             win_rate = (win_count / total_appearances) * 100 if total_appearances > 0 else 0
@@ -1289,6 +1304,10 @@ async def get_simple_recommendations_fallback(user_votes: List[Dict], offset: in
                 poster=content.get("poster"),
                 imdb_id=content["imdb_id"]
             ))
+            
+            # Stop once we have enough recommendations
+            if len(recommendations) >= limit:
+                break
     
     return recommendations
 
