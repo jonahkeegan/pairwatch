@@ -1181,6 +1181,22 @@ async def get_stored_ai_recommendations(user_id: str, offset: int = 0, limit: in
             "viewed": False
         }).sort("recommendation_score", -1).to_list(length=None)
         
+        # Get watched content IDs to exclude from recommendations
+        watched_interactions = await db.user_interactions.find({
+            "user_id": user_id,
+            "interaction_type": "watched"
+        }).to_list(length=None)
+        
+        watched_content_ids = [i["content_id"] for i in watched_interactions]
+        
+        # Also exclude content user marked as "not_interested"
+        not_interested = await db.user_interactions.find({
+            "user_id": user_id,
+            "interaction_type": "not_interested"
+        }).to_list(length=None)
+        
+        watched_content_ids.extend([i["content_id"] for i in not_interested])
+        
         # Track seen content IDs and IMDB IDs to prevent duplicates
         seen_content_ids = set()
         seen_imdb_ids = set()
@@ -1190,6 +1206,10 @@ async def get_stored_ai_recommendations(user_id: str, offset: int = 0, limit: in
         for rec in all_stored_recs:
             # Skip if we've already seen this content ID
             if rec["content_id"] in seen_content_ids:
+                continue
+                
+            # Skip if this content has been marked as watched
+            if rec["content_id"] in watched_content_ids:
                 continue
                 
             content = await db.content.find_one({"id": rec["content_id"]})
