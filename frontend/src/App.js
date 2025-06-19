@@ -338,7 +338,12 @@ function App() {
       );
       
       const newItems = response.data.items || [];
-      setUserWatchlist(prev => [...prev, ...newItems]);
+      
+      // Deduplication: filter out any items that are already in the watchlist
+      const existingIds = new Set(userWatchlist.map(item => item.content.id));
+      const uniqueNewItems = newItems.filter(item => !existingIds.has(item.content.id));
+      
+      setUserWatchlist(prev => [...prev, ...uniqueNewItems]);
       setWatchlistPage(prev => ({
         offset: prev.offset + 20,
         hasMore: response.data.has_more || false,
