@@ -230,6 +230,172 @@ async def search_and_store_content(title: str, content_type: str) -> Optional[Co
     await db.content.insert_one(content_item.dict())
     return content_item
 
+async def search_and_store_content(title: str, content_type: str) -> Optional[ContentItem]:
+    """Search OMDB and store content item"""
+    params = {"t": title, "type": content_type}
+    if content_type == "series":
+        params["type"] = "series"
+    omdb_data = await fetch_from_omdb(params)
+    if omdb_data:
+        content_item = ContentItem(
+            imdb_id=omdb_data.get("imdbID"),
+            title=omdb_data.get("Title"),
+            year=omdb_data.get("Year"),
+            content_type="movie" if omdb_data.get("Type") == "movie" else "series",
+            genre=omdb_data.get("Genre", ""),
+            rating=omdb_data.get("imdbRating"),
+            poster=omdb_data.get("Poster"),
+            plot=omdb_data.get("Plot"),
+            director=omdb_data.get("Director"),
+            actors=omdb_data.get("Actors")
+        )
+        await db.content.insert_one(content_item.dict())
+        return content_item
+    return None
+
+async def auto_add_content_on_login(user_id: str):
+    """Automatically add 50 new movies and TV shows when user logs in"""
+    try:
+        print(f"Starting automatic content addition for user {user_id}")
+        
+        # Get current content count for tracking
+        initial_count = await db.content.count_documents({})
+        
+        # Popular movie titles for discovery (updated lists)
+        popular_movies = [
+            "Oppenheimer", "Barbie", "Spider-Man: Across the Spider-Verse", "Guardians of the Galaxy Vol. 3",
+            "Fast X", "Scream VI", "John Wick: Chapter 4", "Indiana Jones and the Dial of Destiny",
+            "Mission: Impossible – Dead Reckoning Part One", "Transformers: Rise of the Beasts",
+            "The Flash", "Ant-Man and the Wasp: Quantumania", "Creed III", "Avatar: The Way of Water",
+            "Top Gun: Maverick", "Black Panther: Wakanda Forever", "Thor: Love and Thunder", "Minions: The Rise of Gru",
+            "Doctor Strange in the Multiverse of Madness", "Jurassic World Dominion", "The Batman", "Uncharted",
+            "Morbius", "Sonic the Hedgehog 2", "The Northman", "Everything Everywhere All at Once",
+            "Dune", "No Time to Die", "Spider-Man: No Way Home", "The Matrix Resurrections",
+            "Eternals", "Venom: Let There Be Carnage", "F9: The Fast Saga", "Black Widow",
+            "Godzilla vs. Kong", "Zack Snyder's Justice League", "Wonder Woman 1984", "Tenet",
+            "Mulan", "Soul", "Onward", "Bad Boys for Life", "Birds of Prey", "1917",
+            "Ford v Ferrari", "Joker", "Avengers: Endgame", "Captain Marvel", "Shazam!",
+            "Alita: Battle Angel", "Glass", "Aquaman", "Spider-Man: Into the Spider-Verse", "Bohemian Rhapsody"
+        ]
+        
+        popular_tv_shows = [
+            "The Last of Us", "Wednesday", "House of the Dragon", "The Bear", "Stranger Things",
+            "The Crown", "Ozark", "Squid Game", "Bridgerton", "The Witcher",
+            "Euphoria", "Ted Lasso", "Mare of Easttown", "The Queen's Gambit", "The Mandalorian",
+            "WandaVision", "The Boys", "Succession", "Better Call Saul", "The Umbrella Academy",
+            "Lucifer", "Money Heist", "The Office", "Friends", "Breaking Bad",
+            "Game of Thrones", "The Walking Dead", "Westworld", "Sherlock", "Black Mirror",
+            "Peaky Blinders", "The Handmaid's Tale", "This Is Us", "Grey's Anatomy", "The Good Doctor",
+            "9-1-1", "NCIS", "Chicago Fire", "FBI", "Blue Bloods",
+            "Young Sheldon", "The Big Bang Theory", "Modern Family", "How I Met Your Mother", "Suits",
+            "Prison Break", "Lost", "Dexter", "House", "The Sopranos"
+        ]
+        
+        # Combine and shuffle for random selection
+        all_content = []
+        for movie in popular_movies:
+            all_content.append({"title": movie, "type": "movie"})
+        for show in popular_tv_shows:
+            all_content.append({"title": show, "type": "series"})
+        
+        random.shuffle(all_content)
+        
+        # Track existing content to avoid duplicates
+        existing_imdb_ids = set()
+        existing_titles = set()
+        
+        # Get existing content from database
+        existing_content = await db.content.find({}, {"imdb_id": 1, "title": 1, "year": 1}).to_list(length=None)
+        for content in existing_content:
+            existing_imdb_ids.add(content.get("imdb_id"))
+            existing_titles.add(f"{content.get('title', '').lower().strip()}_{content.get('year', '')}")
+        
+        added_count = 0
+        attempted_count = 0
+        target_count = 50
+        
+        for content_info in all_content:
+            if added_count >= target_count:
+                break
+                
+            attempted_count += 1
+            title = content_info["title"]
+            content_type = content_info["type"]
+            
+            try:
+                # Check if content already exists by title
+                title_year_key = f"{title.lower().strip()}_"
+                if any(existing_title.startswith(title_year_key) for existing_title in existing_titles):
+                    print(f"Skipping {title} - already exists by title")
+                    continue
+                
+                # Fetch from OMDB
+                params = {"t": title, "apikey": OMDB_API_KEY}
+                if content_type == "series":
+                    params["type"] = "series"
+                
+                response = requests.get(OMDB_BASE_URL, params=params, timeout=5)
+                if response.status_code == 200:
+                    omdb_data = response.json()
+                    
+                    if omdb_data.get("Response") == "True":
+                        imdb_id = omdb_data.get("imdbID")
+                        year = omdb_data.get("Year", "")
+                        
+                        # Check for duplicates
+                        if imdb_id in existing_imdb_ids:
+                            print(f"Skipping {title} - duplicate IMDB ID: {imdb_id}")
+                            continue
+                        
+                        title_year_key = f"{title.lower().strip()}_{year}"
+                        if title_year_key in existing_titles:
+                            print(f"Skipping {title} - duplicate title/year: {title_year_key}")
+                            continue
+                        
+                        # Create and store content item
+                        content_item = ContentItem(
+                            imdb_id=imdb_id,
+                            title=omdb_data.get("Title"),
+                            year=year,
+                            content_type="movie" if omdb_data.get("Type") == "movie" else "series",
+                            genre=omdb_data.get("Genre", ""),
+                            rating=omdb_data.get("imdbRating"),
+                            poster=omdb_data.get("Poster"),
+                            plot=omdb_data.get("Plot"),
+                            director=omdb_data.get("Director"),
+                            actors=omdb_data.get("Actors")
+                        )
+                        
+                        await db.content.insert_one(content_item.dict())
+                        
+                        # Update tracking sets
+                        existing_imdb_ids.add(imdb_id)
+                        existing_titles.add(title_year_key)
+                        
+                        added_count += 1
+                        print(f"Added content {added_count}/50: {title} ({content_type})")
+                        
+                        # Small delay to avoid overwhelming the API
+                        await asyncio.sleep(0.1)
+                    
+                    else:
+                        print(f"OMDB error for {title}: {omdb_data.get('Error', 'Unknown error')}")
+                        
+            except Exception as e:
+                print(f"Error adding content {title}: {str(e)}")
+                continue
+            
+            # Safety check to avoid infinite loops
+            if attempted_count > 200:
+                print("Reached maximum attempt limit (200), stopping content addition")
+                break
+        
+        final_count = await db.content.count_documents({})
+        print(f"Auto content addition completed for user {user_id}: {added_count} new items added (total: {final_count})")
+        
+    except Exception as e:
+        print(f"Error in auto_add_content_on_login: {str(e)}")
+
 # Initialize popular content - Expanded for richer experience
 POPULAR_MOVIES = [
     # Classic Films
