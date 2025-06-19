@@ -1214,20 +1214,40 @@ async def generate_realtime_recommendations(user_id: str, limit: int = 20) -> Li
         
         # Generate recommendations
         ml_recommendations = recommendation_engine.generate_recommendations(
-            user_profile, content_df, watched_content_ids, num_recommendations=limit
+            user_profile, content_df, watched_content_ids, num_recommendations=limit * 2  # Get more than needed to account for duplicates
         )
         
-        # Convert to API format
+        # Convert to API format with deduplication
         recommendations = []
+        seen_content_ids = set()
+        seen_imdb_ids = set()
+        
         for rec in ml_recommendations:
+            # Skip if we've already seen this content ID
+            if rec["content_id"] in seen_content_ids:
+                continue
+                
             content = await db.content.find_one({"id": rec["content_id"]})
             if content:
+                # Skip if we've already seen this IMDB ID
+                if content["imdb_id"] in seen_imdb_ids:
+                    continue
+                    
+                # Add to tracking sets
+                seen_content_ids.add(rec["content_id"])
+                seen_imdb_ids.add(content["imdb_id"])
+                
+                # Add to recommendations
                 recommendations.append(Recommendation(
                     title=content["title"],
                     reason=rec["reasoning"],
                     poster=content.get("poster"),
                     imdb_id=content["imdb_id"]
                 ))
+                
+                # Stop once we have enough recommendations
+                if len(recommendations) >= limit:
+                    break
         
         return recommendations
         
