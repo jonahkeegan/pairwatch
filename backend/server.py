@@ -1097,8 +1097,17 @@ async def auto_generate_ai_recommendations(user_id: str):
         # Clear old recommendations
         await db.algo_recommendations.delete_many({"user_id": user_id})
         
-        # Store new recommendations
+        # Additional deduplication by content_id before storing
+        seen_content_ids = set()
+        unique_recommendations = []
+        
         for rec in ml_recommendations:
+            if rec["content_id"] not in seen_content_ids:
+                seen_content_ids.add(rec["content_id"])
+                unique_recommendations.append(rec)
+        
+        # Store new unique recommendations
+        for rec in unique_recommendations:
             # Store in algo_recommendations
             algo_rec = AlgoRecommendation(
                 user_id=user_id,
@@ -1109,7 +1118,7 @@ async def auto_generate_ai_recommendations(user_id: str):
             )
             await db.algo_recommendations.insert_one(algo_rec.dict())
         
-        print(f"Auto-generated {len(ml_recommendations)} recommendations for user {user_id}")
+        print(f"Auto-generated {len(unique_recommendations)} unique recommendations for user {user_id}")
         
     except Exception as e:
         print(f"Error auto-generating recommendations for user {user_id}: {str(e)}")
