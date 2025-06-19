@@ -73,8 +73,22 @@ class AutoContentAdditionTester:
     def get_content_count(self):
         """Get the current count of content items in the database"""
         try:
+            # Try to use the API endpoint first
+            success, response = self.run_test(
+                "Get Content Count",
+                "GET",
+                "content/count",
+                200
+            )
+            
+            if success and 'count' in response:
+                count = response['count']
+                logger.info(f"📊 Current content count (via API): {count}")
+                return count
+            
+            # Fall back to direct database query if API fails
             count = self.db.content.count_documents({})
-            logger.info(f"📊 Current content count: {count}")
+            logger.info(f"📊 Current content count (via DB): {count}")
             return count
         except Exception as e:
             logger.error(f"❌ Error getting content count: {str(e)}")
