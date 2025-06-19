@@ -262,12 +262,20 @@ class AdvancedRecommendationEngine:
         
         # Calculate recommendation scores
         recommendations = []
+        seen_content_ids = set()  # Track content IDs to prevent duplicates
         
         for _, content in unwatched_content.iterrows():
+            content_id = content['content_id']
+            
+            # Skip if we've already processed this content (deduplication)
+            if content_id in seen_content_ids:
+                continue
+            
+            seen_content_ids.add(content_id)
             score = self._calculate_recommendation_score(content, user_profile)
             
             recommendations.append({
-                'content_id': content['content_id'],
+                'content_id': content_id,
                 'title': content['title'],
                 'score': score,
                 'reasoning': self._generate_reasoning(content, user_profile),
@@ -281,7 +289,18 @@ class AdvancedRecommendationEngine:
         
         # Sort by score and return top recommendations
         recommendations.sort(key=lambda x: x['score'], reverse=True)
-        return recommendations[:num_recommendations]
+        
+        # Final deduplication check based on title and year (in case content_id duplicates exist)
+        unique_recommendations = []
+        seen_titles = set()
+        
+        for rec in recommendations:
+            title_year_key = f"{rec['title'].lower().strip()}_{rec['year']}"
+            if title_year_key not in seen_titles:
+                seen_titles.add(title_year_key)
+                unique_recommendations.append(rec)
+        
+        return unique_recommendations[:num_recommendations]
     
     def _calculate_recommendation_score(self, content: pd.Series, user_profile: Dict) -> float:
         """Calculate recommendation score for a content item"""
