@@ -1115,12 +1115,27 @@ async def auto_generate_ai_recommendations(user_id: str):
         
         # Additional deduplication by content_id before storing
         seen_content_ids = set()
+        seen_imdb_ids = set()
         unique_recommendations = []
         
         for rec in ml_recommendations:
-            if rec["content_id"] not in seen_content_ids:
-                seen_content_ids.add(rec["content_id"])
-                unique_recommendations.append(rec)
+            # Skip if we've already seen this content ID
+            if rec["content_id"] in seen_content_ids:
+                continue
+                
+            # Get content details to check IMDB ID
+            content = await db.content.find_one({"id": rec["content_id"]})
+            if not content:
+                continue
+                
+            # Skip if we've already seen this IMDB ID
+            if content["imdb_id"] in seen_imdb_ids:
+                continue
+                
+            # Add to tracking sets
+            seen_content_ids.add(rec["content_id"])
+            seen_imdb_ids.add(content["imdb_id"])
+            unique_recommendations.append(rec)
         
         # Store new unique recommendations
         for rec in unique_recommendations:
