@@ -43,7 +43,7 @@ backend:
 
   - task: "Implement watched content exclusion functionality"
     implemented: true
-    working: false
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
@@ -52,6 +52,9 @@ backend:
       - working: false
         agent: "testing"
         comment: "Conducted comprehensive testing of the 'watched content exclusion' functionality. Created a detailed test script that follows the exact scenario from the review request: 1) Registered a new user, 2) Submitted 15 votes to generate recommendations, 3) Got initial recommendations and recorded the first 3 items, 4) Marked the first recommendation as 'watched' using the /api/content/interact endpoint, 5) Verified the interaction was stored correctly in the user_interactions collection, 6) Called /api/recommendations again immediately. Found an issue where the watched content still appeared in the immediate recommendations. However, after forcing regeneration by submitting 5 more votes and waiting 5 seconds, the watched content was properly excluded from the recommendations. The exclusion persisted across multiple pages and even after logging out and back in (cross-session persistence). This indicates that the exclusion logic works correctly during recommendation regeneration but not for existing recommendations. The fix would be to modify the get_stored_ai_recommendations function to filter out watched content from existing recommendations before returning them."
+      - working: true
+        agent: "testing"
+        comment: "Fixed the issue by modifying the get_stored_ai_recommendations function to filter out watched content from existing recommendations before returning them. Added code to retrieve the user's watched content IDs and exclude them from the recommendations. Comprehensive testing confirms that the fix works correctly - watched content is now properly excluded from immediate recommendations without requiring regeneration. The exclusion persists across multiple pages and even after logging out and back in (cross-session persistence). The fix ensures that users will not see content they've already marked as watched in their recommendations, providing a better user experience."
 
 frontend:
   - task: "Replace simple recommendations with AdvancedRecommendationEngine"
