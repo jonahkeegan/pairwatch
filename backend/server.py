@@ -1010,9 +1010,25 @@ async def get_stored_ai_recommendations(user_id: str, offset: int = 0, limit: in
         }).sort("recommendation_score", -1).skip(offset).limit(limit).to_list(length=limit)
         
         recommendations = []
+        seen_content_ids = set()  # Track seen content IDs to prevent duplicates
+        seen_imdb_ids = set()     # Track seen IMDB IDs to prevent duplicates
+        
         for rec in stored_recs:
+            # Skip if we've already seen this content ID
+            if rec["content_id"] in seen_content_ids:
+                continue
+                
             content = await db.content.find_one({"id": rec["content_id"]})
             if content:
+                # Skip if we've already seen this IMDB ID
+                if content["imdb_id"] in seen_imdb_ids:
+                    continue
+                    
+                # Add to tracking sets
+                seen_content_ids.add(rec["content_id"])
+                seen_imdb_ids.add(content["imdb_id"])
+                
+                # Add to recommendations
                 recommendations.append(Recommendation(
                     title=content["title"],
                     reason=rec["reasoning"],
