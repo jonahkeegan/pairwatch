@@ -1692,6 +1692,15 @@ async def update_watchlist_priority(
     
     return {"success": True, "priority_updated": True}
 
+@api_router.get("/content/count")
+async def get_content_count():
+    """Get the current count of content items in the database"""
+    try:
+        count = await db.content.count_documents({})
+        return {"count": count}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @api_router.get("/content/{content_id}/user-status")
 async def get_content_user_status(
     content_id: str,
