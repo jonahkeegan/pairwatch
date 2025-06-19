@@ -1003,17 +1003,19 @@ async def check_and_auto_refresh_recommendations(user_id: str) -> bool:
 async def get_stored_ai_recommendations(user_id: str, offset: int = 0, limit: int = 20) -> List[Recommendation]:
     """Get stored AI recommendations from database with pagination"""
     try:
-        # Get stored recommendations with pagination
-        stored_recs = await db.algo_recommendations.find({
+        # Get all stored recommendations for the user to track seen content IDs
+        all_stored_recs = await db.algo_recommendations.find({
             "user_id": user_id,
             "viewed": False
-        }).sort("recommendation_score", -1).skip(offset).limit(limit).to_list(length=limit)
+        }).sort("recommendation_score", -1).to_list(length=None)
         
-        recommendations = []
-        seen_content_ids = set()  # Track seen content IDs to prevent duplicates
-        seen_imdb_ids = set()     # Track seen IMDB IDs to prevent duplicates
+        # Track seen content IDs and IMDB IDs to prevent duplicates
+        seen_content_ids = set()
+        seen_imdb_ids = set()
+        unique_recommendations = []
         
-        for rec in stored_recs:
+        # Process all recommendations to build unique list
+        for rec in all_stored_recs:
             # Skip if we've already seen this content ID
             if rec["content_id"] in seen_content_ids:
                 continue
@@ -1028,15 +1030,23 @@ async def get_stored_ai_recommendations(user_id: str, offset: int = 0, limit: in
                 seen_content_ids.add(rec["content_id"])
                 seen_imdb_ids.add(content["imdb_id"])
                 
-                # Add to recommendations
-                recommendations.append(Recommendation(
-                    title=content["title"],
-                    reason=rec["reasoning"],
-                    poster=content.get("poster"),
-                    imdb_id=content["imdb_id"]
-                ))
+                # Add to unique recommendations
+                unique_recommendations.append({
+                    "recommendation": Recommendation(
+                        title=content["title"],
+                        reason=rec["reasoning"],
+                        poster=content.get("poster"),
+                        imdb_id=content["imdb_id"]
+                    ),
+                    "score": rec["recommendation_score"]
+                })
         
-        return recommendations
+        # Sort by score and apply pagination
+        unique_recommendations.sort(key=lambda x: x["score"], reverse=True)
+        paginated_recommendations = unique_recommendations[offset:offset + limit]
+        
+        # Extract just the recommendation objects
+        return [item["recommendation"] for item in paginated_recommendations]
         
     except Exception as e:
         print(f"Error getting stored recommendations for user {user_id}: {str(e)}")
