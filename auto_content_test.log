@@ -1,0 +1,80 @@
+2025-06-19 22:25:39,902 - auto_content_test - INFO - 🔍 Testing API at: https://bc399ce5-d614-4d4b-a2e3-afb7b5993410.preview.emergentagent.com/api
+2025-06-19 22:25:39,902 - auto_content_test - INFO - 📝 Test user: auto_content_test_20250619222539@example.com
+2025-06-19 22:25:39,902 - auto_content_test - INFO - 
+🔍 RUNNING ALL AUTOMATIC CONTENT ADDITION TESTS
+2025-06-19 22:25:39,902 - auto_content_test - INFO - 
+🔍 TESTING AUTOMATIC CONTENT ADDITION ON REGISTRATION
+2025-06-19 22:25:39,902 - auto_content_test - INFO - 
+📋 Step 1: Get initial content count
+2025-06-19 22:25:39,925 - auto_content_test - INFO - 📊 Current content count: 345
+2025-06-19 22:25:39,925 - auto_content_test - INFO - 
+📋 Step 2: Register a completely new user account
+2025-06-19 22:25:39,925 - auto_content_test - INFO - 
+🔍 Testing User Registration...
+2025-06-19 22:25:40,387 - auto_content_test - INFO - ✅ Passed - Status: 200
+2025-06-19 22:25:40,388 - auto_content_test - INFO - ✅ User registered with ID: 3a7eb7bf-97ce-4ce4-a48b-7558b0e68b7c
+2025-06-19 22:25:40,388 - auto_content_test - INFO - ✅ Auth token received: eyJhbGciOi...
+2025-06-19 22:25:40,388 - auto_content_test - INFO - ✅ Successfully registered new user: auto_content_test_20250619222539@example.com
+2025-06-19 22:25:40,388 - auto_content_test - INFO - 
+📋 Step 3: Wait for background content addition to complete (30-60 seconds)
+2025-06-19 22:25:40,388 - auto_content_test - INFO - Waiting 10 seconds...
+2025-06-19 22:25:50,389 - auto_content_test - INFO - 📊 Current content count: 345
+2025-06-19 22:25:50,389 - auto_content_test - INFO - After 10 seconds: 0 new items added
+2025-06-19 22:25:50,389 - auto_content_test - INFO - Waiting 20 more seconds...
+2025-06-19 22:26:10,391 - auto_content_test - INFO - 📊 Current content count: 345
+2025-06-19 22:26:10,391 - auto_content_test - INFO - After 30 seconds: 0 new items added
+2025-06-19 22:26:10,391 - auto_content_test - INFO - Waiting 30 more seconds...
+2025-06-19 22:26:40,391 - auto_content_test - INFO - 
+📋 Step 4: Check final content count
+2025-06-19 22:26:40,393 - auto_content_test - INFO - 📊 Current content count: 345
+2025-06-19 22:26:40,393 - auto_content_test - INFO - Initial content count: 345
+2025-06-19 22:26:40,393 - auto_content_test - INFO - Final content count: 345
+2025-06-19 22:26:40,393 - auto_content_test - INFO - Total items added: 0
+2025-06-19 22:26:40,393 - auto_content_test - ERROR - ❌ No new content items were added
+2025-06-19 22:26:40,393 - auto_content_test - INFO - 
+🔍 TESTING AUTOMATIC CONTENT ADDITION ON LOGIN
+2025-06-19 22:26:40,393 - auto_content_test - INFO - 
+📋 Step 1: Get initial content count
+2025-06-19 22:26:40,394 - auto_content_test - INFO - 📊 Current content count: 345
+2025-06-19 22:26:40,395 - auto_content_test - INFO - 
+📋 Step 2: Login with existing user
+2025-06-19 22:26:40,395 - auto_content_test - INFO - 
+🔍 Testing User Login...
+2025-06-19 22:26:40,879 - auto_content_test - INFO - ✅ Passed - Status: 200
+2025-06-19 22:26:40,880 - auto_content_test - INFO - ✅ User logged in with ID: 3a7eb7bf-97ce-4ce4-a48b-7558b0e68b7c
+2025-06-19 22:26:40,880 - auto_content_test - INFO - ✅ Auth token received: eyJhbGciOi...
+2025-06-19 22:26:40,880 - auto_content_test - INFO - ✅ Successfully logged in as: auto_content_test_20250619222539@example.com
+2025-06-19 22:26:40,880 - auto_content_test - INFO - 
+📋 Step 3: Wait for background content addition to complete (30-60 seconds)
+2025-06-19 22:26:40,880 - auto_content_test - INFO - Waiting 10 seconds...
+2025-06-19 22:26:50,884 - auto_content_test - INFO - 📊 Current content count: 345
+2025-06-19 22:26:50,884 - auto_content_test - INFO - After 10 seconds: 0 new items added
+2025-06-19 22:26:50,884 - auto_content_test - INFO - Waiting 20 more seconds...
+2025-06-19 22:27:10,885 - auto_content_test - INFO - 📊 Current content count: 345
+2025-06-19 22:27:10,885 - auto_content_test - INFO - After 30 seconds: 0 new items added
+2025-06-19 22:27:10,886 - auto_content_test - INFO - Waiting 30 more seconds...
+2025-06-19 22:27:40,886 - auto_content_test - INFO - 
+📋 Step 4: Check final content count
+2025-06-19 22:27:40,887 - auto_content_test - INFO - 📊 Current content count: 345
+2025-06-19 22:27:40,887 - auto_content_test - INFO - Initial content count: 345
+2025-06-19 22:27:40,887 - auto_content_test - INFO - Final content count: 345
+2025-06-19 22:27:40,887 - auto_content_test - INFO - Total items added: 0
+2025-06-19 22:27:40,887 - auto_content_test - INFO - ⚠️ No new content items were added - this could be normal if the database already contains most of the popular titles
+2025-06-19 22:27:40,887 - auto_content_test - INFO - 
+🔍 TESTING CONTENT DEDUPLICATION
+2025-06-19 22:27:40,887 - auto_content_test - INFO - 
+📋 Step 1: Check for duplicate IMDB IDs
+2025-06-19 22:27:40,890 - auto_content_test - INFO - Total content items: 345
+2025-06-19 22:27:40,890 - auto_content_test - INFO - Unique IMDB IDs: 345
+2025-06-19 22:27:40,890 - auto_content_test - INFO - Duplicate IMDB IDs: 0
+2025-06-19 22:27:40,890 - auto_content_test - INFO - ✅ No duplicate IMDB IDs found
+2025-06-19 22:27:40,890 - auto_content_test - INFO - 
+📋 Step 2: Check for duplicate title+year combinations
+2025-06-19 22:27:40,890 - auto_content_test - INFO - Unique title+year combinations: 345
+2025-06-19 22:27:40,890 - auto_content_test - INFO - Duplicate title+year combinations: 0
+2025-06-19 22:27:40,890 - auto_content_test - INFO - ✅ No duplicate title+year combinations found
+2025-06-19 22:27:40,890 - auto_content_test - INFO - 
+📋 TEST SUMMARY:
+2025-06-19 22:27:40,890 - auto_content_test - INFO - Auto content addition on registration: ❌ FAIL
+2025-06-19 22:27:40,890 - auto_content_test - INFO - Auto content addition on login: ✅ PASS
+2025-06-19 22:27:40,890 - auto_content_test - INFO - Content deduplication: ✅ PASS
