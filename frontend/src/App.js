@@ -1059,7 +1059,12 @@ function App() {
       const response = await axios.get(`${API}/watchlist/user_defined?offset=0&limit=20`);
       const items = response.data.items || [];
       
-      setUserWatchlist(items);
+      // Frontend deduplication by content ID
+      const uniqueItems = items.filter((item, index, self) => 
+        index === self.findIndex(i => i.content.id === item.content.id)
+      );
+      
+      setUserWatchlist(uniqueItems);
       setWatchlistPage({
         offset: 20,
         hasMore: response.data.has_more || false,
