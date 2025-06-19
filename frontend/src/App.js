@@ -647,7 +647,9 @@ function App() {
         // For authenticated users, use the consolidated recommendations endpoint
         const response = await axios.get(`${API}/recommendations?offset=0&limit=20`);
         if (response.data && response.data.length > 0) {
-          setRecommendations(response.data);
+          // Frontend deduplication by content ID and title
+          const uniqueRecommendations = deduplicateRecommendations(response.data);
+          setRecommendations(uniqueRecommendations);
           setRecommendationsPage({
             offset: 20,
             hasMore: response.data.length === 20,
@@ -662,7 +664,8 @@ function App() {
         // For guests, use original recommendation system
         const params = { session_id: sessionId, offset: 0, limit: 20 };
         const recResponse = await axios.get(`${API}/recommendations`, { params });
-        setRecommendations(recResponse.data);
+        const uniqueRecommendations = deduplicateRecommendations(recResponse.data);
+        setRecommendations(uniqueRecommendations);
         setRecommendationsPage({
           offset: 20,
           hasMore: recResponse.data.length === 20,
