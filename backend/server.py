@@ -532,6 +532,9 @@ async def register_user(user_data: UserCreate):
         {"$set": {"last_login": datetime.utcnow()}}
     )
     
+    # Trigger automatic content addition in background for new user (non-blocking)
+    asyncio.create_task(auto_add_content_on_login(user.id))
+    
     return Token(
         access_token=access_token,
         token_type="bearer",
