@@ -211,28 +211,6 @@ async def fetch_from_omdb(params: dict) -> dict:
 async def search_and_store_content(title: str, content_type: str) -> Optional[ContentItem]:
     """Search OMDB and store content item"""
     params = {"t": title, "type": content_type}
-    omdb_data = await fetch_from_omdb(params)
-    
-    content_item = ContentItem(
-        imdb_id=omdb_data.get("imdbID"),
-        title=omdb_data.get("Title"),
-        year=omdb_data.get("Year"),
-        content_type="movie" if omdb_data.get("Type") == "movie" else "series",
-        genre=omdb_data.get("Genre", ""),
-        rating=omdb_data.get("imdbRating"),
-        poster=omdb_data.get("Poster") if omdb_data.get("Poster") != "N/A" else None,
-        plot=omdb_data.get("Plot"),
-        director=omdb_data.get("Director"),
-        actors=omdb_data.get("Actors")
-    )
-    
-    # Store in database
-    await db.content.insert_one(content_item.dict())
-    return content_item
-
-async def search_and_store_content(title: str, content_type: str) -> Optional[ContentItem]:
-    """Search OMDB and store content item"""
-    params = {"t": title, "type": content_type}
     if content_type == "series":
         params["type"] = "series"
     omdb_data = await fetch_from_omdb(params)
