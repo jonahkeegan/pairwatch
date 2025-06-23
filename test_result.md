@@ -1,4 +1,16 @@
 backend:
+  - task: "Test genre validation logic in OMDB content retrieval"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "Tested the genre validation logic in OMDB content retrieval. Found 5 existing content items with invalid genres ('N/A') that were added before the validation was implemented. Created a fix script to remove these invalid items. After cleaning the database, registered a new user and logged in to trigger content addition. During this process, the backend logs showed multiple instances of content being skipped due to invalid genres (e.g., 'Skipping Untitled Christopher Nolan Universal Project - invalid or missing genre: N/A'). After registration and login, 63 new content items were added, and none of them had invalid genres. The validation logic is working correctly in both search_and_store_content and add_content_from_imdb_id functions, properly excluding content with empty, 'N/A', 'NaN', or null genres. The database now contains 417 content items, all with valid genre data."
+      
   - task: "Test dynamic OMDB content addition system"
     implemented: true
     working: true
