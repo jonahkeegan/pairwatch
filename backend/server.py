@@ -217,12 +217,19 @@ async def search_and_store_content(title: str, content_type: str) -> Optional[Co
         params["type"] = "series"
     omdb_data = await fetch_from_omdb(params)
     if omdb_data:
+        genre = omdb_data.get("Genre", "")
+        
+        # Skip if genre is invalid or missing
+        if not genre or genre.strip() == "" or genre.strip().upper() in ["N/A", "NAN", "NULL"]:
+            print(f"Skipping {title} - invalid or missing genre: '{genre}'")
+            return None
+        
         content_item = ContentItem(
             imdb_id=omdb_data.get("imdbID"),
             title=omdb_data.get("Title"),
             year=omdb_data.get("Year"),
             content_type="movie" if omdb_data.get("Type") == "movie" else "series",
-            genre=omdb_data.get("Genre", ""),
+            genre=genre,
             rating=omdb_data.get("imdbRating"),
             poster=omdb_data.get("Poster"),
             plot=omdb_data.get("Plot"),
