@@ -71,6 +71,9 @@ frontend:
       - working: true
         agent: "testing"
         comment: "Verified that the /api/recommendations endpoint now uses AdvancedRecommendationEngine. Tested with authenticated users and confirmed that recommendations show evidence of advanced algorithm with personalized reasoning. Also verified fallback functionality for users with insufficient data."
+      - working: true
+        agent: "testing"
+        comment: "Tested enhanced personalized voting pair generation functionality. Verified that AdvancedRecommendationEngine.build_user_profile now includes actor and director preferences. Tested both cold-start strategy (< 10 votes) and personalized strategy (≥ 10 votes). Cold-start strategy provides diverse, popular, and recent content pairs with good genre diversity. Personalized strategy successfully detects user preferences for genres and content types. However, found an issue with watched content exclusion - watched content can still appear in voting pairs. All other helper functions are working correctly, and the API endpoint handles both guest sessions and authenticated users properly."
 
   - task: "Update vote thresholds for recommendations"
     implemented: true
