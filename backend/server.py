@@ -241,140 +241,251 @@ async def auto_add_content_on_login(user_id: str):
         # Get current content count for tracking
         initial_count = await db.content.count_documents({})
         
-        # Popular movie titles for discovery (updated lists)
-        popular_movies = [
-            "Oppenheimer", "Barbie", "Spider-Man: Across the Spider-Verse", "Guardians of the Galaxy Vol. 3",
-            "Fast X", "Scream VI", "John Wick: Chapter 4", "Indiana Jones and the Dial of Destiny",
-            "Mission: Impossible – Dead Reckoning Part One", "Transformers: Rise of the Beasts",
-            "The Flash", "Ant-Man and the Wasp: Quantumania", "Creed III", "Avatar: The Way of Water",
-            "Top Gun: Maverick", "Black Panther: Wakanda Forever", "Thor: Love and Thunder", "Minions: The Rise of Gru",
-            "Doctor Strange in the Multiverse of Madness", "Jurassic World Dominion", "The Batman", "Uncharted",
-            "Morbius", "Sonic the Hedgehog 2", "The Northman", "Everything Everywhere All at Once",
-            "Dune", "No Time to Die", "Spider-Man: No Way Home", "The Matrix Resurrections",
-            "Eternals", "Venom: Let There Be Carnage", "F9: The Fast Saga", "Black Widow",
-            "Godzilla vs. Kong", "Zack Snyder's Justice League", "Wonder Woman 1984", "Tenet",
-            "Mulan", "Soul", "Onward", "Bad Boys for Life", "Birds of Prey", "1917",
-            "Ford v Ferrari", "Joker", "Avengers: Endgame", "Captain Marvel", "Shazam!",
-            "Alita: Battle Angel", "Glass", "Aquaman", "Spider-Man: Into the Spider-Verse", "Bohemian Rhapsody"
-        ]
-        
-        popular_tv_shows = [
-            "The Last of Us", "Wednesday", "House of the Dragon", "The Bear", "Stranger Things",
-            "The Crown", "Ozark", "Squid Game", "Bridgerton", "The Witcher",
-            "Euphoria", "Ted Lasso", "Mare of Easttown", "The Queen's Gambit", "The Mandalorian",
-            "WandaVision", "The Boys", "Succession", "Better Call Saul", "The Umbrella Academy",
-            "Lucifer", "Money Heist", "The Office", "Friends", "Breaking Bad",
-            "Game of Thrones", "The Walking Dead", "Westworld", "Sherlock", "Black Mirror",
-            "Peaky Blinders", "The Handmaid's Tale", "This Is Us", "Grey's Anatomy", "The Good Doctor",
-            "9-1-1", "NCIS", "Chicago Fire", "FBI", "Blue Bloods",
-            "Young Sheldon", "The Big Bang Theory", "Modern Family", "How I Met Your Mother", "Suits",
-            "Prison Break", "Lost", "Dexter", "House", "The Sopranos"
-        ]
-        
-        # Combine and shuffle for random selection
-        all_content = []
-        for movie in popular_movies:
-            all_content.append({"title": movie, "type": "movie"})
-        for show in popular_tv_shows:
-            all_content.append({"title": show, "type": "series"})
-        
-        random.shuffle(all_content)
-        
-        # Track existing content to avoid duplicates
-        existing_imdb_ids = set()
-        existing_titles = set()
-        
-        # Get existing content from database
-        existing_content = await db.content.find({}, {"imdb_id": 1, "title": 1, "year": 1}).to_list(length=None)
-        for content in existing_content:
-            existing_imdb_ids.add(content.get("imdb_id"))
-            existing_titles.add(f"{content.get('title', '').lower().strip()}_{content.get('year', '')}")
-        
+        # Dynamic content discovery using multiple strategies
         added_count = 0
-        attempted_count = 0
         target_count = 50
         
-        for content_info in all_content:
-            if added_count >= target_count:
+        # Strategy 1: Recent popular releases by year (dynamically generate)
+        current_year = datetime.now().year
+        recent_years = [current_year, current_year - 1, current_year - 2, current_year - 3]
+        
+        # Strategy 2: Search terms for discovering content
+        popular_search_terms = [
+            # Recent trends and franchises
+            "Marvel", "DC", "Star Wars", "Fast", "John Wick", "Mission Impossible",
+            "Avatar", "Jurassic", "Transformers", "Spider", "Batman", "Superman",
+            # Genres and popular terms
+            "Comedy 2024", "Action 2024", "Drama 2024", "Horror 2024", "Thriller 2024",
+            "Romance 2024", "Adventure 2024", "Sci-Fi 2024", "Fantasy 2024",
+            # International and diverse content
+            "Korean", "Japanese", "French", "Spanish", "Italian", "German",
+            # Streaming platform originals indicators
+            "Original", "Netflix", "Amazon", "Disney", "HBO", "Apple"
+        ]
+        
+        # Strategy 3: Popular actors/directors to find their recent works
+        popular_names = [
+            "Tom Hanks", "Leonardo DiCaprio", "Meryl Streep", "Denzel Washington",
+            "Scarlett Johansson", "Ryan Reynolds", "The Rock", "Jennifer Lawrence",
+            "Brad Pitt", "Angelina Jolie", "Will Smith", "Chris Evans",
+            "Robert Downey", "Christopher Nolan", "Quentin Tarantino", "Martin Scorsese"
+        ]
+        
+        # Get existing content to avoid duplicates
+        existing_content = await db.content.find({}, {"imdb_id": 1, "title": 1, "year": 1}).to_list(length=None)
+        existing_imdb_ids = {content.get("imdb_id") for content in existing_content if content.get("imdb_id")}
+        existing_titles = {f"{content.get('title', '').lower().strip()}_{content.get('year', '')}" for content in existing_content}
+        
+        # Remove None/empty values
+        existing_imdb_ids.discard(None)
+        existing_imdb_ids.discard("")
+        
+        search_attempts = 0
+        max_search_attempts = 100  # Prevent infinite loops
+        
+        # Strategy 1: Search by recent years
+        for year in recent_years:
+            if added_count >= target_count or search_attempts >= max_search_attempts:
                 break
                 
-            attempted_count += 1
-            title = content_info["title"]
-            content_type = content_info["type"]
-            
-            try:
-                # Check if content already exists by title
-                title_year_key = f"{title.lower().strip()}_"
-                if any(existing_title.startswith(title_year_key) for existing_title in existing_titles):
-                    print(f"Skipping {title} - already exists by title")
+            for content_type in ["movie", "series"]:
+                if added_count >= target_count or search_attempts >= max_search_attempts:
+                    break
+                
+                try:
+                    search_attempts += 1
+                    # Search for content from specific year
+                    params = {"s": f"*", "y": str(year), "type": content_type, "apikey": OMDB_API_KEY}
+                    
+                    response = requests.get(OMDB_BASE_URL, params=params, timeout=10)
+                    if response.status_code == 200:
+                        search_data = response.json()
+                        
+                        if search_data.get("Response") == "True" and "Search" in search_data:
+                            search_results = search_data["Search"]
+                            random.shuffle(search_results)  # Randomize results
+                            
+                            for item in search_results[:5]:  # Take first 5 from each search
+                                if added_count >= target_count:
+                                    break
+                                    
+                                imdb_id = item.get("imdbID")
+                                title = item.get("Title", "")
+                                year_from_result = item.get("Year", "")
+                                
+                                # Skip if already exists
+                                if imdb_id in existing_imdb_ids:
+                                    continue
+                                    
+                                title_year_key = f"{title.lower().strip()}_{year_from_result}"
+                                if title_year_key in existing_titles:
+                                    continue
+                                
+                                # Get detailed info for this item
+                                detail_success = await add_content_from_imdb_id(imdb_id, existing_imdb_ids, existing_titles)
+                                if detail_success:
+                                    added_count += 1
+                                    print(f"Added content {added_count}/50: {title} ({year_from_result}) via year search")
+                                    
+                                await asyncio.sleep(0.1)  # Rate limiting
+                    
+                except Exception as e:
+                    print(f"Error searching by year {year}: {str(e)}")
                     continue
-                
-                # Fetch from OMDB
-                params = {"t": title, "apikey": OMDB_API_KEY}
-                if content_type == "series":
-                    params["type"] = "series"
-                
-                response = requests.get(OMDB_BASE_URL, params=params, timeout=5)
-                if response.status_code == 200:
-                    omdb_data = response.json()
-                    
-                    if omdb_data.get("Response") == "True":
-                        imdb_id = omdb_data.get("imdbID")
-                        year = omdb_data.get("Year", "")
-                        
-                        # Check for duplicates
-                        if imdb_id in existing_imdb_ids:
-                            print(f"Skipping {title} - duplicate IMDB ID: {imdb_id}")
-                            continue
-                        
-                        title_year_key = f"{title.lower().strip()}_{year}"
-                        if title_year_key in existing_titles:
-                            print(f"Skipping {title} - duplicate title/year: {title_year_key}")
-                            continue
-                        
-                        # Create and store content item
-                        content_item = ContentItem(
-                            imdb_id=imdb_id,
-                            title=omdb_data.get("Title"),
-                            year=year,
-                            content_type="movie" if omdb_data.get("Type") == "movie" else "series",
-                            genre=omdb_data.get("Genre", ""),
-                            rating=omdb_data.get("imdbRating"),
-                            poster=omdb_data.get("Poster"),
-                            plot=omdb_data.get("Plot"),
-                            director=omdb_data.get("Director"),
-                            actors=omdb_data.get("Actors")
-                        )
-                        
-                        await db.content.insert_one(content_item.dict())
-                        
-                        # Update tracking sets
-                        existing_imdb_ids.add(imdb_id)
-                        existing_titles.add(title_year_key)
-                        
-                        added_count += 1
-                        print(f"Added content {added_count}/50: {title} ({content_type})")
-                        
-                        # Small delay to avoid overwhelming the API
-                        await asyncio.sleep(0.1)
-                    
-                    else:
-                        print(f"OMDB error for {title}: {omdb_data.get('Error', 'Unknown error')}")
-                        
-            except Exception as e:
-                print(f"Error adding content {title}: {str(e)}")
-                continue
-            
-            # Safety check to avoid infinite loops
-            if attempted_count > 200:
-                print("Reached maximum attempt limit (200), stopping content addition")
+        
+        # Strategy 2: Search by popular terms
+        random.shuffle(popular_search_terms)
+        for search_term in popular_search_terms:
+            if added_count >= target_count or search_attempts >= max_search_attempts:
                 break
+                
+            try:
+                search_attempts += 1
+                params = {"s": search_term, "apikey": OMDB_API_KEY}
+                
+                response = requests.get(OMDB_BASE_URL, params=params, timeout=10)
+                if response.status_code == 200:
+                    search_data = response.json()
+                    
+                    if search_data.get("Response") == "True" and "Search" in search_data:
+                        search_results = search_data["Search"]
+                        random.shuffle(search_results)
+                        
+                        for item in search_results[:3]:  # Take first 3 from each search
+                            if added_count >= target_count:
+                                break
+                                
+                            imdb_id = item.get("imdbID")
+                            title = item.get("Title", "")
+                            year_from_result = item.get("Year", "")
+                            
+                            # Skip if already exists
+                            if imdb_id in existing_imdb_ids:
+                                continue
+                                
+                            title_year_key = f"{title.lower().strip()}_{year_from_result}"
+                            if title_year_key in existing_titles:
+                                continue
+                            
+                            # Get detailed info for this item
+                            detail_success = await add_content_from_imdb_id(imdb_id, existing_imdb_ids, existing_titles)
+                            if detail_success:
+                                added_count += 1
+                                print(f"Added content {added_count}/50: {title} ({year_from_result}) via search term '{search_term}'")
+                                
+                            await asyncio.sleep(0.1)  # Rate limiting
+                
+            except Exception as e:
+                print(f"Error searching for term '{search_term}': {str(e)}")
+                continue
+        
+        # Strategy 3: Fallback to popular names if we haven't reached target
+        if added_count < target_count:
+            random.shuffle(popular_names)
+            for name in popular_names:
+                if added_count >= target_count or search_attempts >= max_search_attempts:
+                    break
+                    
+                try:
+                    search_attempts += 1
+                    params = {"s": name, "apikey": OMDB_API_KEY}
+                    
+                    response = requests.get(OMDB_BASE_URL, params=params, timeout=10)
+                    if response.status_code == 200:
+                        search_data = response.json()
+                        
+                        if search_data.get("Response") == "True" and "Search" in search_data:
+                            search_results = search_data["Search"]
+                            random.shuffle(search_results)
+                            
+                            for item in search_results[:2]:  # Take first 2 from each search
+                                if added_count >= target_count:
+                                    break
+                                    
+                                imdb_id = item.get("imdbID")
+                                title = item.get("Title", "")
+                                year_from_result = item.get("Year", "")
+                                
+                                # Skip if already exists
+                                if imdb_id in existing_imdb_ids:
+                                    continue
+                                    
+                                title_year_key = f"{title.lower().strip()}_{year_from_result}"
+                                if title_year_key in existing_titles:
+                                    continue
+                                
+                                # Get detailed info for this item
+                                detail_success = await add_content_from_imdb_id(imdb_id, existing_imdb_ids, existing_titles)
+                                if detail_success:
+                                    added_count += 1
+                                    print(f"Added content {added_count}/50: {title} ({year_from_result}) via actor/director '{name}'")
+                                    
+                                await asyncio.sleep(0.1)  # Rate limiting
+                    
+                except Exception as e:
+                    print(f"Error searching for name '{name}': {str(e)}")
+                    continue
         
         final_count = await db.content.count_documents({})
         print(f"Auto content addition completed for user {user_id}: {added_count} new items added (total: {final_count})")
         
     except Exception as e:
         print(f"Error in auto_add_content_on_login: {str(e)}")
+        import traceback
+        traceback.print_exc()
+
+
+async def add_content_from_imdb_id(imdb_id: str, existing_imdb_ids: set, existing_titles: set) -> bool:
+    """Helper function to add content from IMDB ID"""
+    try:
+        # Get detailed info for this IMDB ID
+        params = {"i": imdb_id, "apikey": OMDB_API_KEY, "plot": "full"}
+        
+        response = requests.get(OMDB_BASE_URL, params=params, timeout=10)
+        if response.status_code == 200:
+            omdb_data = response.json()
+            
+            if omdb_data.get("Response") == "True":
+                title = omdb_data.get("Title", "")
+                year = omdb_data.get("Year", "")
+                content_type = omdb_data.get("Type", "")
+                
+                # Skip if invalid content type
+                if content_type not in ["movie", "series"]:
+                    return False
+                
+                # Double-check duplicates
+                title_year_key = f"{title.lower().strip()}_{year}"
+                if imdb_id in existing_imdb_ids or title_year_key in existing_titles:
+                    return False
+                
+                # Create and store content item
+                content_item = ContentItem(
+                    imdb_id=imdb_id,
+                    title=title,
+                    year=year,
+                    content_type="movie" if content_type == "movie" else "series",
+                    genre=omdb_data.get("Genre", ""),
+                    rating=omdb_data.get("imdbRating"),
+                    poster=omdb_data.get("Poster"),
+                    plot=omdb_data.get("Plot"),
+                    director=omdb_data.get("Director"),
+                    actors=omdb_data.get("Actors")
+                )
+                
+                await db.content.insert_one(content_item.dict())
+                
+                # Update tracking sets
+                existing_imdb_ids.add(imdb_id)
+                existing_titles.add(title_year_key)
+                
+                return True
+        
+        return False
+        
+    except Exception as e:
+        print(f"Error adding content for IMDB ID {imdb_id}: {str(e)}")
+        return False
 
 # Initialize popular content - Expanded for richer experience
 POPULAR_MOVIES = [
