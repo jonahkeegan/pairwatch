@@ -211,28 +211,6 @@ async def fetch_from_omdb(params: dict) -> dict:
 async def search_and_store_content(title: str, content_type: str) -> Optional[ContentItem]:
     """Search OMDB and store content item"""
     params = {"t": title, "type": content_type}
-    omdb_data = await fetch_from_omdb(params)
-    
-    content_item = ContentItem(
-        imdb_id=omdb_data.get("imdbID"),
-        title=omdb_data.get("Title"),
-        year=omdb_data.get("Year"),
-        content_type="movie" if omdb_data.get("Type") == "movie" else "series",
-        genre=omdb_data.get("Genre", ""),
-        rating=omdb_data.get("imdbRating"),
-        poster=omdb_data.get("Poster") if omdb_data.get("Poster") != "N/A" else None,
-        plot=omdb_data.get("Plot"),
-        director=omdb_data.get("Director"),
-        actors=omdb_data.get("Actors")
-    )
-    
-    # Store in database
-    await db.content.insert_one(content_item.dict())
-    return content_item
-
-async def search_and_store_content(title: str, content_type: str) -> Optional[ContentItem]:
-    """Search OMDB and store content item"""
-    params = {"t": title, "type": content_type}
     if content_type == "series":
         params["type"] = "series"
     omdb_data = await fetch_from_omdb(params)
@@ -974,6 +952,327 @@ async def get_voting_pair(
         item1=ContentItem(**pair[0]),
         item2=ContentItem(**pair[1]),
         content_type=content_type
+    )
+
+# --- BEGIN NEW HELPERS FOR PERSONALIZED VOTING PAIRS ---
+
+COLD_START_THRESHOLD = 10 # Number of votes before switching to personalized strategy
+
+async def _get_user_vote_stats(user_id: Optional[str], session_id: Optional[str]) -> Tuple[int, Set[frozenset], Set[str]]:
+    """Fetches user's vote count, voted pairs, and watched content IDs."""
+    voted_pairs = set()
+    watched_content_ids = set()
+    user_votes_list = []
+
+    if user_id:
+        user_votes_list = await db.votes.find({"user_id": user_id}).to_list(length=None)
+        interactions = await db.user_interactions.find(
+            {"user_id": user_id, "interaction_type": {"$in": ["watched", "not_interested"]}}
+        ).to_list(length=None)
+        for interaction in interactions:
+            if interaction["interaction_type"] == "watched":
+                watched_content_ids.add(interaction["content_id"])
+            # Could also add "not_interested" to a separate set if needed for candidate filtering
+    elif session_id:
+        user_votes_list = await db.votes.find({"session_id": session_id}).to_list(length=None)
+        # Interactions for sessions might be limited or not tracked as deeply
+        # For now, sessions might not have a rich 'watched' history for pair generation
+
+    for vote in user_votes_list:
+        voted_pairs.add(frozenset([vote["winner_id"], vote["loser_id"]]))
+
+    return len(user_votes_list), voted_pairs, watched_content_ids
+
+
+async def _get_all_content_items_as_df(app_db) -> Optional[pd.DataFrame]:
+    """
+    Fetches all content items from DB and returns them as a featurized DataFrame.
+    NOTE: In a production system, featurization and caching of this DataFrame would be critical.
+    """
+    all_content_dicts = await app_db.content.find({}).to_list(length=None)
+    if not all_content_dicts:
+        return None
+
+    # Assuming recommendation_engine is globally available or passed appropriately
+    # For this context, we'll re-instance it if not globally available in server.py
+    # global recommendation_engine # if it's a global instance
+    current_recommendation_engine = AdvancedRecommendationEngine() # Or get from app state
+
+    # Convert MongoDB's _id to string if necessary, and ensure 'id' field consistency
+    for item in all_content_dicts:
+        if '_id' in item and 'id' not in item:
+            item['id'] = str(item['_id'])
+
+    try:
+        content_df = current_recommendation_engine.extract_content_features(all_content_dicts)
+        return content_df
+    except Exception as e:
+        print(f"Error featurizing content: {e}")
+        return None
+
+async def _get_candidate_items_for_pairing(
+    user_profile: Dict,
+    all_content_df: pd.DataFrame,
+    strategy: str, # "cold_start" or "personalized"
+    vote_count: int,
+    watched_content_ids: Set[str],
+    app_db, # Pass db instance for potential queries
+    num_candidates: int = 100 # Number of candidates to aim for
+) -> List[Dict]:
+    """Selects candidate items based on the user profile and strategy."""
+
+    if all_content_df is None or all_content_df.empty:
+        return []
+
+    # Filter out watched and not_interested content upfront
+    # TODO: Add not_interested_ids if that logic is added to _get_user_vote_stats
+    eligible_content_df = all_content_df[~all_content_df['content_id'].isin(watched_content_ids)]
+    if eligible_content_df.empty:
+        return []
+
+    candidate_items = []
+
+    if strategy == "cold_start":
+        # Popularity: High rating, recency, diversity
+        # Simple approach: take highly rated recent items, ensure diversity
+        popular_recent = eligible_content_df[
+            (eligible_content_df['rating'] >= 7.0) &
+            (eligible_content_df['year'] >= datetime.now().year - 5)
+        ]
+
+        # Ensure diversity by genre_primary if possible
+        diverse_candidates = []
+        seen_primary_genres = set()
+        # Try to get at least N different primary genres
+        # Shuffle to get different items each time for cold start
+        popular_recent_shuffled = popular_recent.sample(frac=1)
+
+        for _, item in popular_recent_shuffled.iterrows():
+            if len(diverse_candidates) >= num_candidates:
+                break
+            if item['genre_primary'] not in seen_primary_genres or len(seen_primary_genres) < 5: # Aim for some diversity
+                diverse_candidates.append(item.to_dict())
+                seen_primary_genres.add(item['genre_primary'])
+            elif len(diverse_candidates) < num_candidates / 2 : # Still fill up if not enough diverse ones
+                 diverse_candidates.append(item.to_dict())
+
+
+        # If not enough, supplement with just popular or just general items
+        if len(diverse_candidates) < num_candidates:
+            remaining_needed = num_candidates - len(diverse_candidates)
+            # Get IDs already selected to avoid duplicates
+            selected_ids = {c['content_id'] for c in diverse_candidates}
+
+            # Add more from popular_recent that were not picked due to genre diversity rule
+            additional_popular = popular_recent_shuffled[~popular_recent_shuffled['content_id'].isin(selected_ids)]
+            for _, item in additional_popular.head(remaining_needed).iterrows():
+                 diverse_candidates.append(item.to_dict())
+                 if len(diverse_candidates) >= num_candidates: break
+                 remaining_needed -=1
+
+            # If still not enough, pick randomly from remaining eligible content
+            if remaining_needed > 0:
+                selected_ids.update({c['content_id'] for c in diverse_candidates}) # update selected_ids
+                random_sample = eligible_content_df[~eligible_content_df['content_id'].isin(selected_ids)].sample(
+                    n=min(remaining_needed, len(eligible_content_df[~eligible_content_df['content_id'].isin(selected_ids)]))
+                )
+                for _, item in random_sample.iterrows():
+                    diverse_candidates.append(item.to_dict())
+        candidate_items = diverse_candidates
+
+    elif strategy == "personalized":
+        # Use recommendation engine (assuming it's available and user_profile is populated)
+        # This is a simplified version; a real one would be more complex
+        # global recommendation_engine # Or pass it in
+        current_recommendation_engine = AdvancedRecommendationEngine() # Or get from app state
+
+        # Generate a larger list of recommendations
+        raw_recommendations = current_recommendation_engine.generate_recommendations(
+            user_profile, eligible_content_df, list(watched_content_ids), num_recommendations * 2 # Get more to pick from
+        )
+        candidate_items = raw_recommendations[:num_candidates] # Take top N as candidates
+
+        # TODO: Add more sophisticated exploration candidates if generate_recommendations is too exploitative
+        # For example, items from less preferred genres but high quality, or new items.
+        if len(candidate_items) < num_candidates:
+             # Supplement with some diverse popular items if recommendations are too few
+            remaining_needed = num_candidates - len(candidate_items)
+            selected_ids = {c['content_id'] for c in candidate_items}
+
+            supplement_candidates_df = eligible_content_df[~eligible_content_df['content_id'].isin(selected_ids)]
+            supplement_candidates_df = supplement_candidates_df.sort_values(by="rating", ascending=False) # Example: popular
+
+            for _, item in supplement_candidates_df.head(remaining_needed).iterrows():
+                candidate_items.append(item.to_dict()) # item here is a Pandas Series
+                if len(candidate_items) >= num_candidates: break
+
+    return candidate_items
+
+
+async def _select_pair_from_candidates(
+    candidates: List[Dict],
+    user_profile: Dict, # Needed for personalized pairing strategies
+    strategy: str, # "cold_start" or "personalized"
+    voted_pairs: Set[frozenset],
+    target_content_type: Optional[str] = None, # If we want to force a movie or series pair
+    max_attempts_to_find_pair: int = 50
+) -> Optional[Tuple[Dict, Dict]]:
+    """Selects a pair of items from the candidate list based on strategy."""
+    if len(candidates) < 2:
+        return None
+
+    # Filter by target_content_type if provided
+    if target_content_type:
+        typed_candidates = [c for c in candidates if c.get('content_type') == target_content_type]
+        if len(typed_candidates) < 2: # Not enough of the target type
+             # Fallback: if not enough of target type, use original candidates but try to match type
+             # This part of logic could be refined based on strictness of type matching
+             if len(candidates) >=2: # if original candidates has enough items
+                  typed_candidates = candidates
+             else: return None # cannot form a pair
+        candidates = typed_candidates
+
+
+    for _ in range(max_attempts_to_find_pair):
+        if len(candidates) < 2: return None
+
+        item1, item2 = random.sample(candidates, 2) # Default to random sampling for now
+
+        # TODO: Implement more sophisticated pairing strategies based on 'strategy' and user_profile
+        # For example:
+        # if strategy == "personalized":
+        #     if random.random() < 0.7: # 70% exploitation
+        #         # Pick item1 based on high score/match with profile
+        #         # Pick item2 similar to item1 or also high score
+        #     else: # 30% exploration
+        #         # Pick item1 based on high score
+        #         # Pick item2 for diversity, newness, or from a weaker preference area
+
+        # Ensure items are different and pair hasn't been voted on
+        # And ensure they are of the same content type (current system behavior)
+        if item1['content_id'] != item2['content_id'] and \
+           frozenset([item1['content_id'], item2['content_id']]) not in voted_pairs and \
+           item1.get('content_type') == item2.get('content_type'): # Enforce same content type
+            return item1, item2
+
+    return None # Could not find a suitable pair
+
+@api_router.get("/voting-pair", response_model=VotePair)
+async def get_voting_pair(
+    session_id: Optional[str] = Query(None),
+    current_user: Optional[User] = Depends(get_current_user)
+) -> VotePair:
+    """Get a pair of items for voting, personalized if user has enough history."""
+    user_id_for_prefs = None
+    session_id_for_prefs = None
+
+    if current_user:
+        user_id_for_prefs = current_user.id
+    elif session_id:
+        # Verify session exists
+        session = await db.sessions.find_one({"session_id": session_id})
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found")
+        session_id_for_prefs = session_id
+    else:
+        raise HTTPException(status_code=400, detail="Either login or provide session_id")
+
+    vote_count, voted_pairs, watched_content_ids = await _get_user_vote_stats(user_id_for_prefs, session_id_for_prefs)
+
+    user_profile = {}
+    strategy = "cold_start"
+    if user_id_for_prefs: # Only build full profiles for registered users
+        user_interactions = await db.user_interactions.find({"user_id": user_id_for_prefs}).to_list(length=None)
+        # Append vote interactions for profile building
+        user_vote_docs = await db.votes.find({"user_id": user_id_for_prefs}).to_list(length=None)
+        for vote_doc in user_vote_docs:
+            winner_content = await db.content.find_one({"id": vote_doc["winner_id"]})
+            loser_content = await db.content.find_one({"id": vote_doc["loser_id"]})
+            if winner_content:
+                user_interactions.append({
+                    "user_id": user_id_for_prefs, "content_id": vote_doc["winner_id"],
+                    "interaction_type": "vote_winner", "content": winner_content
+                })
+            if loser_content:
+                 user_interactions.append({
+                    "user_id": user_id_for_prefs, "content_id": vote_doc["loser_id"],
+                    "interaction_type": "vote_loser", "content": loser_content
+                })
+
+        # global recommendation_engine # or get from app state
+        current_recommendation_engine = AdvancedRecommendationEngine()
+        user_profile = current_recommendation_engine.build_user_profile(user_interactions) # Assumes enhanced profile
+
+        if vote_count >= COLD_START_THRESHOLD:
+            strategy = "personalized"
+
+    all_content_df = await _get_all_content_items_as_df(db)
+    if all_content_df is None or all_content_df.empty:
+        raise HTTPException(status_code=503, detail="Content features not available or no content in DB.")
+
+    # Determine target content type (can be made smarter later)
+    # For now, stick to random choice like before, or slightly prefer user's tendency
+    target_content_type = random.choice(["movie", "series"])
+    if strategy == "personalized" and user_profile.get('content_type_preference'):
+        ct_pref = user_profile['content_type_preference']
+        if ct_pref.get('movie', 0) > ct_pref.get('series', 0) + 0.2: # Strong preference for movies
+            target_content_type = "movie"
+        elif ct_pref.get('series', 0) > ct_pref.get('movie', 0) + 0.2: # Strong preference for series
+            target_content_type = "series"
+        # else, it's mixed, so random is fine.
+
+    candidate_items = await _get_candidate_items_for_pairing(
+        user_profile, all_content_df, strategy, vote_count, watched_content_ids, db
+    )
+
+    if not candidate_items or len(candidate_items) < 2:
+        # Fallback: If not enough candidates, try with a purely random selection from DB
+        # This is similar to the original get_voting_pair's fallback
+        print(f"Warning: Not enough candidates from strategy '{strategy}'. Falling back to broader random selection.")
+        fallback_items_cursor = db.content.find({"content_type": target_content_type})
+        fallback_items_list = await fallback_items_cursor.to_list(length=200) # Get a decent sample
+        if len(fallback_items_list) < 2:
+             # Try other content type if primary failed
+            target_content_type = "series" if target_content_type == "movie" else "movie"
+            fallback_items_cursor = db.content.find({"content_type": target_content_type})
+            fallback_items_list = await fallback_items_cursor.to_list(length=200)
+            if len(fallback_items_list) < 2:
+                 raise HTTPException(status_code=404, detail=f"Not enough content of type '{target_content_type}' for fallback.")
+
+        # Convert to dicts if they are not already (they should be from DB)
+        candidate_items = [dict(item) for item in fallback_items_list]
+
+
+    pair_tuple = await _select_pair_from_candidates(
+        candidate_items, user_profile, strategy, voted_pairs, target_content_type
+    )
+
+    if not pair_tuple:
+        # Ultimate fallback: grab any two of the target_content_type not voted on, if possible
+        # This is a simplified version of the original get_voting_pair's fallback
+        print(f"Warning: Could not select a pair using advanced logic. Using simpler random fallback.")
+        items_of_type_dicts = [c for c in all_content_df.to_dict('records') if c['content_type'] == target_content_type]
+
+        if len(items_of_type_dicts) < 2:
+            # Try other content type if primary failed
+            target_content_type = "series" if target_content_type == "movie" else "movie"
+            items_of_type_dicts = [c for c in all_content_df.to_dict('records') if c['content_type'] == target_content_type]
+            if len(items_of_type_dicts) < 2:
+                 raise HTTPException(status_code=404, detail=f"Not enough content of type '{target_content_type}' for final fallback.")
+
+        for _ in range(50): # Max attempts for this simple fallback
+            item1_dict, item2_dict = random.sample(items_of_type_dicts, 2)
+            if frozenset([item1_dict["id"], item2_dict["id"]]) not in voted_pairs:
+                return VotePair(item1=ContentItem(**item1_dict), item2=ContentItem(**item2_dict), content_type=target_content_type)
+
+        # If still no pair, raise (very unlikely if content exists)
+        raise HTTPException(status_code=404, detail="Could not form a voting pair after all fallbacks.")
+
+    item1_dict, item2_dict = pair_tuple
+    return VotePair(
+        item1=ContentItem(**item1_dict),
+        item2=ContentItem(**item2_dict),
+        content_type=item1_dict.get('content_type') # Should be same for both
     )
 
 @api_router.post("/vote")
