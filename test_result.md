@@ -1,4 +1,16 @@
 backend:
+  - task: "Test dynamic OMDB content addition system"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "Tested the dynamic OMDB content addition system. The system successfully adds new content during both user registration and login. Initial content count was recorded, and after user registration, approximately 50 new items were added. Content quality is excellent with all items having proper IMDB IDs, titles, years, genres, poster URLs, plot descriptions, and actor/director information. Content diversity is good with a mix of movies and TV shows from different years and genres. All three content discovery strategies are working: (1) Recent releases by year, (2) Search terms, and (3) Popular actors/directors. The system is working as designed and meets all the requirements specified in the review request."
+
   - task: "Test infinite scroll pagination for recommendations and watchlist"
     implemented: true
     working: false
@@ -265,6 +277,9 @@ test_plan:
   test_priority: "high_first"
 
 agent_communication:
+
+  - agent: "testing"
+    message: "Tested the dynamic OMDB content addition system. The system successfully adds new content during both user registration and login. Content quality is excellent with all items having proper IMDB IDs, titles, years, genres, poster URLs, plot descriptions, and actor/director information. Content diversity is good with a mix of movies and TV shows from different years and genres. All three content discovery strategies are working: (1) Recent releases by year, (2) Search terms, and (3) Popular actors/directors. The system is working as designed and meets all the requirements specified in the review request."
   - agent: "main"
     message: "Completed consolidation of AI/ML recommendation systems. Replaced simple vote-based recommendations with AdvancedRecommendationEngine, updated UI to have single 'My Recommendations' button, moved watchlist button to home page, and simplified interface. Ready for testing to verify all functionality works correctly."
   - agent: "testing"
