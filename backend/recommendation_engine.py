@@ -188,36 +188,143 @@ class AdvancedRecommendationEngine:
         weights = {
             'want_to_watch': 1.0,
             'watched': 0.8,
-            'vote_winner': 0.6,
-            'vote_loser': -0.3,
+            'vote_winner': 0.6, # Positive weight for winners
+            'vote_loser': -0.3, # Negative weight for losers
             'not_interested': -0.5
         }
         return weights.get(interaction_type, 0.0)
     
     def _normalize_preferences(self, profile: Dict) -> Dict:
-        """Normalize preference weights"""
-        # Normalize genre preferences
-        if profile['genre_preferences']:
-            total_genre_weight = sum(profile['genre_preferences'].values())
-            if total_genre_weight > 0:
-                for genre in profile['genre_preferences']:
-                    profile['genre_preferences'][genre] /= total_genre_weight
-        
-        # Normalize decade preferences
-        if profile['decade_preferences']:
-            total_decade_weight = sum(profile['decade_preferences'].values())
-            if total_decade_weight > 0:
-                for decade in profile['decade_preferences']:
-                    profile['decade_preferences'][decade] /= total_decade_weight
-        
-        # Normalize content type preferences
+        """
+        Normalize preference weights.
+        For map-like preferences (genres, actors, etc.), weights are normalized
+        such that the sum of their absolute values is 1, maintaining positive/negative relationships.
+        Content type preferences are normalized so their sum is 1.
+        """
+        for pref_type in ['genre_preferences', 'decade_preferences', 'actor_preferences', 'director_preferences']:
+            pref_map = profile.get(pref_type)
+            if pref_map:
+                total_weight = sum(abs(w) for w in pref_map.values()) # Sum of absolute weights
+                if total_weight > 0:
+                    for key in pref_map:
+                        pref_map[key] /= total_weight
+
+        # Normalize content type preferences (special case, sums to 1)
         total_content_weight = sum(profile['content_type_preference'].values())
         if total_content_weight > 0:
             for content_type in profile['content_type_preference']:
                 profile['content_type_preference'][content_type] /= total_content_weight
         
+        # Normalize quality_preference (e.g. average rating of positive interactions)
+        # This depends on how it's calculated. If it's a sum, it needs normalization.
+        # For now, let's assume it's an aggregated score that doesn't need explicit normalization here
+        # if its scale is already understood by the scoring functions.
+        # If it were, e.g., sum of ratings, and we had count_positive_quality_interactions:
+        # if profile.get('count_positive_quality_interactions', 0) > 0:
+        #    profile['quality_preference'] /= profile['count_positive_quality_interactions']
+
         return profile
-    
+
+    def build_user_profile(self, user_interactions: List[Dict]) -> Dict:
+        """
+        Build comprehensive user preference profile from interactions.
+        Captures preferences for genres, decades, actors, directors, content types,
+        and overall interaction patterns like preference strength.
+        """
+        profile = {
+            'genre_preferences': {}, # Normalized weights for genres
+            'decade_preferences': {}, # Normalized weights for decades
+            'quality_preference': 0.0, # Aggregate score based on ratings of liked items
+            'content_type_preference': {'movie': 0.5, 'series': 0.5}, # Normalized preference for movie vs series
+            'director_preferences': {}, # Normalized weights for directors
+            'actor_preferences': {}, # Normalized weights for actors
+            'interaction_patterns': {}, # Placeholder for more advanced patterns
+            'preference_strength': 0.0, # Ratio of positive interactions to total interactions
+            'positive_interaction_count': 0, # Count of all positive interactions
+            'negative_interaction_count': 0, # Count of all negative interactions
+            # Counts for preference maturity assessment:
+            'genre_interaction_counts': {}, # Raw count of positive interactions per genre
+            'actor_interaction_counts': {}, # Raw count of positive interactions per actor
+            'director_interaction_counts': {}, # Raw count of positive interactions per director
+        }
+
+        if not user_interactions:
+            return profile
+
+        positive_interactions = []
+        negative_interactions = []
+
+        for i in user_interactions:
+            weight = self._get_interaction_weight(i['interaction_type'])
+            if weight > 0:
+                positive_interactions.append(i)
+                profile['positive_interaction_count'] +=1
+            elif weight < 0:
+                negative_interactions.append(i) # Not directly used for preference building below, but counts are useful
+                profile['negative_interaction_count'] +=1
+
+        total_interactions = profile['positive_interaction_count'] + profile['negative_interaction_count']
+        if total_interactions > 0:
+            profile['preference_strength'] = profile['positive_interaction_count'] / total_interactions
+
+        # Extract preferences from positive interactions primarily
+        for interaction in positive_interactions: # Focus on positive interactions for building affinity
+            content = interaction.get('content')
+            if not content: # Ensure content is present
+                continue
+
+            weight = self._get_interaction_weight(interaction['interaction_type'])
+
+            # Genre preferences
+            genres_str = content.get('genre', '')
+            if genres_str:
+                genres = [g.strip() for g in genres_str.split(',') if g.strip()]
+                for genre in genres:
+                    profile['genre_preferences'][genre] = profile['genre_preferences'].get(genre, 0) + weight
+                    profile['genre_interaction_counts'][genre] = profile['genre_interaction_counts'].get(genre, 0) + 1
+
+            # Decade preferences
+            decade = self._get_decade(content.get('year', ''))
+            profile['decade_preferences'][decade] = profile['decade_preferences'].get(decade, 0) + weight
+
+            # Content type preferences
+            content_type = content.get('content_type', 'movie') # Default to movie if not specified
+            # Adjust based on preference, ensure it doesn't overly skew from a few interactions
+            current_pref_movie = profile['content_type_preference']['movie']
+            current_pref_series = profile['content_type_preference']['series']
+            if content_type == 'movie':
+                 profile['content_type_preference']['movie'] += weight * 0.1
+            elif content_type == 'series':
+                 profile['content_type_preference']['series'] += weight * 0.1
+            # Simple re-normalization after adjustment to keep sum ~1 for interpretation
+            temp_total_ct_pref = sum(profile['content_type_preference'].values())
+            if temp_total_ct_pref > 0:
+                 profile['content_type_preference']['movie'] /= temp_total_ct_pref
+                 profile['content_type_preference']['series'] /= temp_total_ct_pref
+
+
+            # Quality preference (sum of ratings of liked items)
+            rating = self._safe_float(content.get('rating', 0))
+            if rating > 0:
+                profile['quality_preference'] += rating * weight # This will be an aggregate score
+
+            # Actor preferences
+            actors_str = content.get('actors', '')
+            if actors_str and actors_str != 'N/A':
+                actors_list = [a.strip() for a in actors_str.split(',') if a.strip()]
+                for actor in actors_list:
+                    profile['actor_preferences'][actor] = profile['actor_preferences'].get(actor, 0) + weight
+                    profile['actor_interaction_counts'][actor] = profile['actor_interaction_counts'].get(actor, 0) + 1
+
+            # Director preferences
+            director_str = content.get('director', '')
+            if director_str and director_str != 'N/A' and director_str.strip():
+                profile['director_preferences'][director_str.strip()] = profile['director_preferences'].get(director_str.strip(), 0) + weight
+                profile['director_interaction_counts'][director_str.strip()] = profile['director_interaction_counts'].get(director_str.strip(), 0) + 1
+
+        profile = self._normalize_preferences(profile)
+        return profile
+
     def calculate_content_similarity(self, content_df: pd.DataFrame):
         """Calculate content-to-content similarity matrix"""
         # Create feature vectors for content-based filtering
