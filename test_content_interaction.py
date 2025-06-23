@@ -12,7 +12,7 @@ logging.basicConfig(
 logger = logging.getLogger("content_interaction_test")
 
 # API base URL
-BASE_URL = "https://bc399ce5-d614-4d4b-a2e3-afb7b5993410.preview.emergentagent.com/api"
+BASE_URL = "https://4fa5a25b-d44d-470b-8afe-5cd4e20504f0.preview.emergentagent.com/api"
 
 def run_test(name, method, endpoint, expected_status, data=None, auth=False, auth_token=None, params=None):
     """Run a single API test"""
