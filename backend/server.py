@@ -973,7 +973,21 @@ async def _get_user_vote_stats(user_id: Optional[str], session_id: Optional[str]
         ).to_list(length=None)
         for interaction in interactions:
             if interaction["interaction_type"] == "watched":
-                watched_content_ids.add(interaction["content_id"])
+                interaction_content_id = interaction["content_id"]
+                watched_content_ids.add(interaction_content_id)
+                
+                # Also look up the content item to get both its ID and IMDB ID for matching
+                content_item = await db.content.find_one({
+                    "$or": [
+                        {"id": interaction_content_id}, 
+                        {"imdb_id": interaction_content_id}
+                    ]
+                })
+                if content_item:
+                    # Add both internal ID and IMDB ID to watched set for comprehensive exclusion
+                    watched_content_ids.add(content_item.get("id", ""))
+                    watched_content_ids.add(content_item.get("imdb_id", ""))
+                    
             # Could also add "not_interested" to a separate set if needed for candidate filtering
     elif session_id:
         user_votes_list = await db.votes.find({"session_id": session_id}).to_list(length=None)
@@ -983,6 +997,9 @@ async def _get_user_vote_stats(user_id: Optional[str], session_id: Optional[str]
     for vote in user_votes_list:
         voted_pairs.add(frozenset([vote["winner_id"], vote["loser_id"]]))
 
+    # Remove any empty strings from watched_content_ids
+    watched_content_ids.discard("")
+    
     return len(user_votes_list), voted_pairs, watched_content_ids
 
 
