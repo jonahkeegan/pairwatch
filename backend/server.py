@@ -449,9 +449,15 @@ async def add_content_from_imdb_id(imdb_id: str, existing_imdb_ids: set, existin
                 title = omdb_data.get("Title", "")
                 year = omdb_data.get("Year", "")
                 content_type = omdb_data.get("Type", "")
+                genre = omdb_data.get("Genre", "")
                 
                 # Skip if invalid content type
                 if content_type not in ["movie", "series"]:
+                    return False
+                
+                # Skip if genre is invalid or missing
+                if not genre or genre.strip() == "" or genre.strip().upper() in ["N/A", "NAN", "NULL"]:
+                    print(f"Skipping {title} - invalid or missing genre: '{genre}'")
                     return False
                 
                 # Double-check duplicates
@@ -465,7 +471,7 @@ async def add_content_from_imdb_id(imdb_id: str, existing_imdb_ids: set, existin
                     title=title,
                     year=year,
                     content_type="movie" if content_type == "movie" else "series",
-                    genre=omdb_data.get("Genre", ""),
+                    genre=genre,
                     rating=omdb_data.get("imdbRating"),
                     poster=omdb_data.get("Poster"),
                     plot=omdb_data.get("Plot"),
