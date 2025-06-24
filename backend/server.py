@@ -483,6 +483,14 @@ async def add_content_from_imdb_id(imdb_id: str, existing_imdb_ids: set, existin
                     print(f"Skipping {title} - invalid or missing genre: '{genre}'")
                     return False
                 
+                # Skip if genre contains "Short" or "Shorts" - we don't want short films
+                genre_lower = genre.lower()
+                if "short" in genre_lower and ("short" == genre_lower or "shorts" == genre_lower or 
+                                               ", short" in genre_lower or "short," in genre_lower or
+                                               ", shorts" in genre_lower or "shorts," in genre_lower):
+                    print(f"Skipping {title} - contains shorts genre: '{genre}'")
+                    return False
+                
                 # Double-check duplicates
                 title_year_key = f"{title.lower().strip()}_{year}"
                 if imdb_id in existing_imdb_ids or title_year_key in existing_titles:
