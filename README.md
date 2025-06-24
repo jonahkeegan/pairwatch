@@ -118,4 +118,4 @@ Contributions are welcome! Please feel free to submit a pull request or open an 
 
 ## License
 
-This project is unlicensed. (Or specify a license if applicable)
+This project is licensed under the terms of the MIT license.
