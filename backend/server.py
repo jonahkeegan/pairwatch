@@ -232,6 +232,14 @@ async def search_and_store_content(title: str, content_type: str) -> Optional[Co
             print(f"Skipping {title} - contains shorts genre: '{genre}'")
             return None
         
+        # Skip if genre contains "Short" or "Shorts" - we don't want short films
+        genre_lower = genre.lower()
+        if "short" in genre_lower and ("short" == genre_lower or "shorts" == genre_lower or 
+                                       ", short" in genre_lower or "short," in genre_lower or
+                                       ", shorts" in genre_lower or "shorts," in genre_lower):
+            print(f"Skipping {title} - contains shorts genre: '{genre}'")
+            return None
+        
         content_item = ContentItem(
             imdb_id=omdb_data.get("imdbID"),
             title=omdb_data.get("Title"),
