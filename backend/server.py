@@ -2052,7 +2052,7 @@ async def content_interaction(
             raise HTTPException(status_code=400, detail=f"Missing field: {field}")
     
     # Validate interaction type
-    valid_interactions = ["watched", "want_to_watch", "not_interested"]
+    valid_interactions = ["watched", "want_to_watch", "not_interested", "passed"]
     if interaction_data["interaction_type"] not in valid_interactions:
         raise HTTPException(status_code=400, detail="Invalid interaction type")
     
