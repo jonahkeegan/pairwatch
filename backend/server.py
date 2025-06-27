@@ -1574,6 +1574,50 @@ async def submit_vote(
             "user_authenticated": False
         }
 
+@api_router.post("/pass")
+async def pass_content(
+    pass_data: dict,
+    current_user: Optional[User] = Depends(get_current_user)
+):
+    """Pass on content during voting - permanently excludes it from future voting pairs"""
+    required_fields = ["content_id"]
+    for field in required_fields:
+        if field not in pass_data:
+            raise HTTPException(status_code=400, detail=f"Missing field: {field}")
+    
+    # Create interaction record for passed content
+    interaction = UserContentInteraction(
+        user_id=current_user.id if current_user else None,
+        session_id=pass_data.get("session_id") if not current_user else None,
+        content_id=pass_data["content_id"],
+        interaction_type="passed"
+    )
+    
+    await db.user_interactions.insert_one(interaction.dict())
+    
+    # Trigger automatic recommendation refresh for authenticated users
+    # when they pass on content (signal for ML algorithm)
+    if current_user:
+        try:
+            # Get user's vote count to see if they qualify for recommendations
+            user_votes = await db.votes.find({"user_id": current_user.id}).to_list(length=None)
+            total_votes = len(user_votes)
+            
+            if total_votes >= 10:
+                # Trigger background recommendation refresh on content pass
+                # since these are preference signals
+                task = asyncio.create_task(auto_generate_ai_recommendations(current_user.id))
+        except Exception as e:
+            print(f"Background recommendation generation error: {str(e)}")
+            import traceback
+            traceback.print_exc()
+    
+    return {
+        "success": True, 
+        "content_passed": True,
+        "message": "Content permanently excluded from future voting pairs"
+    }
+
 @api_router.get("/recommendations")
 async def get_recommendations(
     offset: int = Query(0, ge=0, description="Number of items to skip"),
