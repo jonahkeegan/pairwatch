@@ -1207,7 +1207,7 @@ async def _get_candidate_items_for_pairing(
     all_content_df: pd.DataFrame,
     strategy: str, # "cold_start" or "personalized"
     vote_count: int,
-    watched_content_ids: Set[str],
+    excluded_content_ids: Set[str],  # Changed from watched_content_ids to excluded_content_ids
     app_db, # Pass db instance for potential queries
     num_candidates: int = 100 # Number of candidates to aim for
 ) -> List[Dict]:
