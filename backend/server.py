@@ -1435,7 +1435,7 @@ async def get_voting_pair(
         # else, it's mixed, so random is fine.
 
     candidate_items = await _get_candidate_items_for_pairing(
-        user_profile, all_content_df, strategy, vote_count, watched_content_ids, db
+        user_profile, all_content_df, strategy, vote_count, excluded_content_ids, db
     )
 
     if not candidate_items or len(candidate_items) < 2:
