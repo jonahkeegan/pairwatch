@@ -117,7 +117,7 @@ class UserContentInteraction(BaseModel):
     user_id: Optional[str] = None
     session_id: Optional[str] = None
     content_id: str
-    interaction_type: str  # "vote_winner", "vote_loser", "watched", "want_to_watch", "not_interested"
+    interaction_type: str  # "vote_winner", "vote_loser", "watched", "want_to_watch", "not_interested", "passed"
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class UserWatchlist(BaseModel):
