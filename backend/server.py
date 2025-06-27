@@ -1390,7 +1390,7 @@ async def get_voting_pair(
     else:
         raise HTTPException(status_code=400, detail="Either login or provide session_id")
 
-    vote_count, voted_pairs, excluded_content_ids = await _get_user_vote_stats(user_id_for_prefs, session_id_for_prefs)
+    vote_count, voted_pairs, watched_content_ids = await _get_user_vote_stats(user_id_for_prefs, session_id_for_prefs)
 
     user_profile = {}
     strategy = "cold_start"
