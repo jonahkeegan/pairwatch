@@ -1301,7 +1301,7 @@ async def _get_candidate_items_for_pairing(
 
         # Generate a larger list of recommendations
         raw_recommendations = current_recommendation_engine.generate_recommendations(
-            user_profile, eligible_content_df, list(watched_content_ids), num_recommendations * 2 # Get more to pick from
+            user_profile, eligible_content_df, list(excluded_content_ids), num_candidates * 2 # Get more to pick from
         )
         candidate_items = raw_recommendations[:num_candidates] # Take top N as candidates
 
