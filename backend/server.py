@@ -1219,15 +1219,15 @@ async def _get_candidate_items_for_pairing(
     # Filter out watched and not_interested content upfront
     # Check both content_id and any other ID fields that might match watched content
     # Create a mask for content that should be excluded
-    if watched_content_ids:
+    if excluded_content_ids:
         # Check content_id field and also any other ID fields in the dataframe
-        content_id_mask = all_content_df['content_id'].isin(watched_content_ids)
+        content_id_mask = all_content_df['content_id'].isin(excluded_content_ids)
         
         # Also check if dataframe has other ID fields that might match
         additional_masks = []
         for col in all_content_df.columns:
             if 'id' in col.lower() and col != 'content_id':
-                additional_masks.append(all_content_df[col].isin(watched_content_ids))
+                additional_masks.append(all_content_df[col].isin(excluded_content_ids))
         
         # Combine all masks
         if additional_masks:
