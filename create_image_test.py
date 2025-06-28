@@ -1,0 +1,135 @@
+#!/usr/bin/env python3
+"""
+Create a simple test page to debug image loading issues
+This will help isolate whether the problem is with React, error handling, or external images
+"""
+
+def create_simple_test_page():
+    html_content = '''<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Loading Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #1a1a1a;
+            color: white;
+        }
+        .test-container {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #333;
+            border-radius: 8px;
+        }
+        .test-image {
+            max-width: 300px;
+            height: 450px;
+            object-fit: cover;
+            border: 2px solid #555;
+        }
+        .error {
+            color: #ff6b6b;
+        }
+        .success {
+            color: #51cf66;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Image Loading Debug Test</h1>
+    
+    <div class="test-container">
+        <h2>Test 1: Direct Oppenheimer Poster (Amazon URL)</h2>
+        <img 
+            src="https://m.media-amazon.com/images/M/MV5BMDBmYTZjNjUtN2M1MS00MTQ2LTk2ODgtNzc2M2QyZGE5NTVjXkEyXkFqcGdeQXVyNzAwMjU2MTY@._V1_SX300.jpg" 
+            alt="Oppenheimer"
+            class="test-image"
+            onload="logSuccess(this)"
+            onerror="logError(this)"
+        >
+        <p id="result1">Loading...</p>
+    </div>
+    
+    <div class="test-container">
+        <h2>Test 2: Same URL with CORS</h2>
+        <img 
+            src="https://m.media-amazon.com/images/M/MV5BMDBmYTZjNjUtN2M1MS00MTQ2LTk2ODgtNzc2M2QyZGE5NTVjXkEyXkFqcGdeQXVyNzAwMjU2MTY@._V1_SX300.jpg" 
+            alt="Oppenheimer with CORS"
+            class="test-image"
+            crossorigin="anonymous"
+            onload="logSuccess(this)"
+            onerror="logError(this)"
+        >
+        <p id="result2">Loading...</p>
+    </div>
+    
+    <div class="test-container">
+        <h2>Test 3: HTTP vs HTTPS</h2>
+        <img 
+            src="http://m.media-amazon.com/images/M/MV5BMDBmYTZjNjUtN2M1MS00MTQ2LTk2ODgtNzc2M2QyZGE5NTVjXkEyXkFqcGdeQXVyNzAwMjU2MTY@._V1_SX300.jpg" 
+            alt="Oppenheimer HTTP"
+            class="test-image"
+            onload="logSuccess(this)"
+            onerror="logError(this)"
+        >
+        <p id="result3">Loading...</p>
+    </div>
+    
+    <div class="test-container">
+        <h2>Test 4: Local Base64 Test Image</h2>
+        <img 
+            src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjQ1MCIgdmlld0JveD0iMCAwIDMwMCA0NTAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIzMDAiIGhlaWdodD0iNDUwIiBmaWxsPSIjMUExQTFBIi8+Cjx0ZXh0IHg9IjE1MCIgeT0iMjI1IiBmaWxsPSJ3aGl0ZSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE2IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5URVNUIFBPU1RFUjwvdGV4dD4KPHN2Zz4K" 
+            alt="Base64 Test"
+            class="test-image"
+            onload="logSuccess(this)"
+            onerror="logError(this)"
+        >
+        <p id="result4">Loading...</p>
+    </div>
+    
+    <script>
+        function logSuccess(img) {
+            const resultId = 'result' + (Array.from(img.parentElement.parentElement.children).indexOf(img.parentElement) + 1);
+            document.getElementById(resultId).innerHTML = '<span class="success">✅ Image loaded successfully!</span>';
+            console.log('✅ Image loaded:', img.src);
+        }
+        
+        function logError(img) {
+            const resultId = 'result' + (Array.from(img.parentElement.parentElement.children).indexOf(img.parentElement) + 1);
+            document.getElementById(resultId).innerHTML = '<span class="error">❌ Image failed to load</span>';
+            console.log('❌ Image failed:', img.src);
+            console.log('Error details:', img);
+        }
+        
+        // Check for any CSP violations
+        document.addEventListener('securitypolicyviolation', function(e) {
+            console.log('🚫 CSP Violation:', e);
+            document.body.innerHTML += '<div style="color: red; background: #330000; padding: 10px; margin: 10px; border-radius: 5px;"><strong>CSP Violation Detected:</strong> ' + e.violatedDirective + ' - ' + e.blockedURI + '</div>';
+        });
+        
+        // Additional debugging
+        console.log('🔍 Page loaded, testing image loading...');
+        console.log('🌐 User Agent:', navigator.userAgent);
+        console.log('🔒 Protocol:', window.location.protocol);
+        console.log('🏠 Origin:', window.location.origin);
+    </script>
+</body>
+</html>'''
+    
+    with open('/app/frontend/public/image-test.html', 'w') as f:
+        f.write(html_content)
+    
+    print("✅ Created image test page at: /app/frontend/public/image-test.html")
+    print("🌐 Access it at: http://your-domain/image-test.html")
+    print("📋 This will test:")
+    print("   1. Direct Amazon poster URL")
+    print("   2. Same URL with CORS attribute") 
+    print("   3. HTTP vs HTTPS version")
+    print("   4. Base64 encoded test image")
+    print("   5. CSP violation detection")
+
+if __name__ == "__main__":
+    create_simple_test_page()
