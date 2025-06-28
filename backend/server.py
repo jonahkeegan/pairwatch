@@ -1075,65 +1075,6 @@ async def get_replacement_voting_pair(
         item2=ContentItem(**replacement_item),
         content_type=content_type
     )
-@api_router.get("/voting-pair")
-async def get_voting_pair(
-    session_id: Optional[str] = Query(None),
-    current_user: Optional[User] = Depends(get_current_user)
-) -> VotePair:
-    """Get a pair of items for voting (same content type only)"""
-    # Determine user identifier
-    user_identifier = None
-    if current_user:
-        user_identifier = ("user", current_user.id)
-    elif session_id:
-        # Verify session exists
-        session = await db.sessions.find_one({"session_id": session_id})
-        if not session:
-            raise HTTPException(status_code=404, detail="Session not found")
-        user_identifier = ("session", session_id)
-    else:
-        raise HTTPException(status_code=400, detail="Either login or provide session_id")
-    
-    # Randomly choose content type (movie or series)
-    content_type = random.choice(["movie", "series"])
-    
-    # Get items of the same type
-    items = await db.content.find({"content_type": content_type}).to_list(length=None)
-    
-    if len(items) < 2:
-        raise HTTPException(status_code=400, detail=f"Not enough {content_type} content available")
-    
-    # Get user's vote history to avoid showing same pairs
-    if user_identifier[0] == "user":
-        user_votes = await db.votes.find({"user_id": user_identifier[1]}).to_list(length=None)
-    else:
-        user_votes = await db.votes.find({"session_id": user_identifier[1]}).to_list(length=None)
-    
-    voted_pairs = set()
-    for vote in user_votes:
-        pair = frozenset([vote["winner_id"], vote["loser_id"]])
-        voted_pairs.add(pair)
-    
-    # Find an unvoted pair
-    max_attempts = 50
-    for _ in range(max_attempts):
-        pair = random.sample(items, 2)
-        item_ids = frozenset([pair[0]["id"], pair[1]["id"]])
-        if item_ids not in voted_pairs:
-            return VotePair(
-                item1=ContentItem(**pair[0]),
-                item2=ContentItem(**pair[1]),
-                content_type=content_type
-            )
-    
-    # If all pairs voted, return random pair
-    pair = random.sample(items, 2)
-    return VotePair(
-        item1=ContentItem(**pair[0]),
-        item2=ContentItem(**pair[1]),
-        content_type=content_type
-    )
-
 # --- BEGIN NEW HELPERS FOR PERSONALIZED VOTING PAIRS ---
 
 COLD_START_THRESHOLD = 10 # Number of votes before switching to personalized strategy
