@@ -125,6 +125,20 @@
 ## Previous Testing Results
 
 backend:
+  - task: "Test voting-pair-replacement endpoint exclusion functionality"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented voting-pair-replacement endpoint with proper exclusion of content marked as not_interested or passed."
+      - working: true
+        agent: "testing"
+        comment: "Conducted comprehensive testing of the voting-pair-replacement endpoint to verify that content marked as 'not_interested' or 'passed' is permanently excluded from replacement pairs. Created two dedicated test scripts: one to test general exclusion functionality and another specifically for the Leonardo DiCaprio content mentioned in the bug report. Both tests passed with 100% success rate. The endpoint properly excludes all types of excluded content (watched, not_interested, passed) and works with both internal IDs and IMDB IDs. Specifically verified that 'Leonardo DiCaprio: A Life in Progress' (ID: 1d26e225-a9b5-4ff9-9eb4-c6ba117f240b) is properly excluded when marked as not_interested. Tested with multiple base content items and verified that exclusion remains consistent. The implementation correctly uses the _get_user_vote_stats function to get excluded content IDs and applies proper filtering in the replacement endpoint. Performance is good with response times around 30-50ms per replacement request."
   - task: "Test genre validation logic in OMDB content retrieval"
     implemented: true
     working: true
