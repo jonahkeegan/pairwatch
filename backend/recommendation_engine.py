@@ -41,6 +41,14 @@ class AdvancedRecommendationEngine:
                 'rating': self._safe_float(item.get('rating', 0)),
                 'genre_primary': self._extract_primary_genre(item.get('genre', '')),
                 'decade': self._get_decade(item['year']),
+                # Preserve all original fields needed for ContentItem creation
+                'imdb_id': item.get('imdb_id', ''),
+                'genre': item.get('genre', ''),
+                'poster': item.get('poster'),
+                'plot': item.get('plot'),
+                'director': item.get('director'),
+                'actors': item.get('actors'),
+                'original_rating': item.get('rating')  # Keep original rating as string
             }
             
             # Advanced features
