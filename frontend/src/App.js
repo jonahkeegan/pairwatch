@@ -1656,7 +1656,14 @@ function App() {
                           alt={title}
                           className="w-full h-64 object-cover cursor-pointer"
                           onClick={() => openPosterModal(contentItem)}
+                          onError={handleImageError}
                         />
+                        <div className="image-fallback w-full h-64 bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center cursor-pointer" style={{display: 'none'}} onClick={() => openPosterModal(contentItem)}>
+                          <div className="text-center text-gray-300">
+                            <div className="text-4xl mb-2">🎬</div>
+                            <div className="text-sm">No Poster Available</div>
+                          </div>
+                        </div>
                         <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-60"></div>
                         <button
                           onClick={() => openPosterModal(contentItem)}
