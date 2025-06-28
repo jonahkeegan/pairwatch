@@ -1461,18 +1461,40 @@ async def get_voting_pair(
     )
 
     if not candidate_items or len(candidate_items) < 2:
-        # Fallback: If not enough candidates, try with a purely random selection from DB
-        # This is similar to the original get_voting_pair's fallback
-        print(f"Warning: Not enough candidates from strategy '{strategy}'. Falling back to broader random selection.")
-        fallback_items_cursor = db.content.find({"content_type": target_content_type})
+        # Fallback: If not enough candidates, try with a broader selection from DB
+        # CRITICAL: Must still apply exclusion filters even in fallback!
+        print(f"Warning: Not enough candidates from strategy '{strategy}'. Falling back to broader random selection with exclusions.")
+        
+        # Build fallback query with proper exclusions
+        fallback_filter = {"content_type": target_content_type}
+        
+        # Add exclusion filters - CRITICAL BUG FIX
+        if excluded_content_ids:
+            fallback_filter["$and"] = [
+                {"id": {"$nin": list(excluded_content_ids)}},
+                {"imdb_id": {"$nin": list(excluded_content_ids)}}
+            ]
+        
+        fallback_items_cursor = db.content.find(fallback_filter)
         fallback_items_list = await fallback_items_cursor.to_list(length=200) # Get a decent sample
+        
         if len(fallback_items_list) < 2:
-             # Try other content type if primary failed
+             # Try other content type if primary failed - but still with exclusions
             target_content_type = "series" if target_content_type == "movie" else "movie"
-            fallback_items_cursor = db.content.find({"content_type": target_content_type})
+            fallback_filter = {"content_type": target_content_type}
+            
+            # Apply exclusions to secondary content type too
+            if excluded_content_ids:
+                fallback_filter["$and"] = [
+                    {"id": {"$nin": list(excluded_content_ids)}},
+                    {"imdb_id": {"$nin": list(excluded_content_ids)}}
+                ]
+            
+            fallback_items_cursor = db.content.find(fallback_filter)
             fallback_items_list = await fallback_items_cursor.to_list(length=200)
+            
             if len(fallback_items_list) < 2:
-                 raise HTTPException(status_code=404, detail=f"Not enough content of type '{target_content_type}' for fallback.")
+                 raise HTTPException(status_code=404, detail=f"Not enough content of type '{target_content_type}' for fallback after exclusions.")
 
         # Convert to dicts if they are not already (they should be from DB)
         candidate_items = [dict(item) for item in fallback_items_list]
