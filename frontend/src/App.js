@@ -1203,6 +1203,8 @@ function App() {
                   src={selectedPoster.poster} 
                   alt={selectedPoster.title}
                   className="w-full max-h-screen object-contain"
+                  crossOrigin="anonymous"
+                  onLoad={handleImageLoad}
                   onError={handleImageError}
                 />
                 <div className="image-fallback w-full h-96 bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center" style={{display: 'none'}}>
