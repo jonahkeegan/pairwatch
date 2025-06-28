@@ -1333,6 +1333,32 @@ async def _select_pair_from_candidates(
 
     return None # Could not find a suitable pair
 
+def _dataframe_row_to_content_item(row_dict: Dict) -> Dict:
+    """Convert DataFrame row with content_id back to ContentItem format"""
+    # Map DataFrame fields back to ContentItem fields
+    content_item_dict = {}
+    
+    # Handle ID field mapping
+    if 'content_id' in row_dict:
+        content_item_dict['id'] = row_dict['content_id']
+    elif 'id' in row_dict:
+        content_item_dict['id'] = row_dict['id']
+    
+    # Map other required fields
+    content_item_dict['imdb_id'] = row_dict.get('imdb_id', '')
+    content_item_dict['title'] = row_dict.get('title', '')
+    content_item_dict['year'] = str(row_dict.get('year', ''))  # Ensure string
+    content_item_dict['content_type'] = row_dict.get('content_type', '')
+    content_item_dict['genre'] = row_dict.get('genre', '')
+    content_item_dict['rating'] = str(row_dict.get('rating', '')) if row_dict.get('rating') else None
+    content_item_dict['poster'] = row_dict.get('poster')
+    content_item_dict['plot'] = row_dict.get('plot')
+    content_item_dict['director'] = row_dict.get('director')
+    content_item_dict['actors'] = row_dict.get('actors')
+    
+    return content_item_dict
+
+
 @api_router.get("/voting-pair", response_model=VotePair)
 async def get_voting_pair(
     session_id: Optional[str] = Query(None),
