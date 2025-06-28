@@ -57,6 +57,19 @@ function App() {
     avatar_url: ''
   });
 
+  // Image loading error handler
+  const handleImageError = (e) => {
+    e.target.style.display = 'none';
+    // Find the parent container and show fallback
+    const parent = e.target.closest('.relative, .poster-container');
+    if (parent) {
+      const fallback = parent.querySelector('.image-fallback');
+      if (fallback) {
+        fallback.style.display = 'flex';
+      }
+    }
+  };
+
   // Configure axios with auth token
   useEffect(() => {
     if (token) {
