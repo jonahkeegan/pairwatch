@@ -1685,6 +1685,8 @@ function App() {
                           src={poster} 
                           alt={title}
                           className="w-full h-64 object-cover cursor-pointer"
+                          crossOrigin="anonymous"
+                          onLoad={handleImageLoad}
                           onClick={() => openPosterModal(contentItem)}
                           onError={handleImageError}
                         />
