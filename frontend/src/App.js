@@ -1977,6 +1977,8 @@ function App() {
                       src={currentPair.item2.poster} 
                       alt={currentPair.item2.title}
                       className="w-full h-48 md:h-80 object-cover"
+                      crossOrigin="anonymous"
+                      onLoad={handleImageLoad}
                       onError={handleImageError}
                     />
                     <div className="image-fallback w-full h-48 md:h-80 bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center" style={{display: 'none'}}>
