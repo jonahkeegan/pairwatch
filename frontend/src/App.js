@@ -1813,7 +1813,14 @@ function App() {
                       src={currentPair.item1.poster} 
                       alt={currentPair.item1.title}
                       className="w-full h-48 md:h-80 object-cover"
+                      onError={handleImageError}
                     />
+                    <div className="image-fallback w-full h-48 md:h-80 bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center" style={{display: 'none'}}>
+                      <div className="text-center text-gray-300">
+                        <div className="text-4xl mb-2">🎬</div>
+                        <div className="text-sm">No Poster Available</div>
+                      </div>
+                    </div>
                     <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-60"></div>
                     <button
                       onClick={(e) => {
