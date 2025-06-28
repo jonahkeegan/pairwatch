@@ -1487,7 +1487,14 @@ async def get_voting_pair(
         for _ in range(50): # Max attempts for this simple fallback
             item1_dict, item2_dict = random.sample(items_of_type_dicts, 2)
             if frozenset([item1_dict["id"], item2_dict["id"]]) not in voted_pairs:
-                return VotePair(item1=ContentItem(**item1_dict), item2=ContentItem(**item2_dict), content_type=target_content_type)
+                # Convert database format to ContentItem format
+                item1_content = _dataframe_row_to_content_item(item1_dict)
+                item2_content = _dataframe_row_to_content_item(item2_dict)
+                return VotePair(
+                    item1=ContentItem(**item1_content), 
+                    item2=ContentItem(**item2_content), 
+                    content_type=target_content_type
+                )
 
         # If still no pair, raise (very unlikely if content exists)
         raise HTTPException(status_code=404, detail="Could not form a voting pair after all fallbacks.")
