@@ -1364,10 +1364,11 @@ async def get_voting_pair(
     session_id: Optional[str] = Query(None),
     current_user: Optional[User] = Depends(get_current_user)
 ) -> VotePair:
-    """Get a pair of items for voting, personalized if user has enough history."""
+    """Get a pair of items for voting with proper poster URLs (SIMPLIFIED VERSION - BYPASSES DATAFRAME)"""
+    # Determine user identifier
     user_id_for_prefs = None
     session_id_for_prefs = None
-
+    
     if current_user:
         user_id_for_prefs = current_user.id
     elif session_id:
@@ -1378,137 +1379,103 @@ async def get_voting_pair(
         session_id_for_prefs = session_id
     else:
         raise HTTPException(status_code=400, detail="Either login or provide session_id")
-
+    
+    # Get user exclusions
     vote_count, voted_pairs, excluded_content_ids = await _get_user_vote_stats(user_id_for_prefs, session_id_for_prefs)
-
-    user_profile = {}
-    strategy = "cold_start"
-    if user_id_for_prefs: # Only build full profiles for registered users
-        user_interactions = await db.user_interactions.find({"user_id": user_id_for_prefs}).to_list(length=None)
-        # Append vote interactions for profile building
-        user_vote_docs = await db.votes.find({"user_id": user_id_for_prefs}).to_list(length=None)
-        for vote_doc in user_vote_docs:
-            winner_content = await db.content.find_one({"id": vote_doc["winner_id"]})
-            loser_content = await db.content.find_one({"id": vote_doc["loser_id"]})
-            if winner_content:
-                user_interactions.append({
-                    "user_id": user_id_for_prefs, "content_id": vote_doc["winner_id"],
-                    "interaction_type": "vote_winner", "content": winner_content
-                })
-            if loser_content:
-                 user_interactions.append({
-                    "user_id": user_id_for_prefs, "content_id": vote_doc["loser_id"],
-                    "interaction_type": "vote_loser", "content": loser_content
-                })
-
-        # global recommendation_engine # or get from app state
-        current_recommendation_engine = AdvancedRecommendationEngine()
-        user_profile = current_recommendation_engine.build_user_profile(user_interactions) # Assumes enhanced profile
-
-        if vote_count >= COLD_START_THRESHOLD:
-            strategy = "personalized"
-
-    all_content_df = await _get_all_content_items_as_df(db)
-    if all_content_df is None or all_content_df.empty:
-        raise HTTPException(status_code=503, detail="Content features not available or no content in DB.")
-
-    # Determine target content type (can be made smarter later)
-    # For now, stick to random choice like before, or slightly prefer user's tendency
+    
+    # Choose content type randomly
     target_content_type = random.choice(["movie", "series"])
-    if strategy == "personalized" and user_profile.get('content_type_preference'):
-        ct_pref = user_profile['content_type_preference']
-        if ct_pref.get('movie', 0) > ct_pref.get('series', 0) + 0.2: # Strong preference for movies
-            target_content_type = "movie"
-        elif ct_pref.get('series', 0) > ct_pref.get('movie', 0) + 0.2: # Strong preference for series
-            target_content_type = "series"
-        # else, it's mixed, so random is fine.
-
-    candidate_items = await _get_candidate_items_for_pairing(
-        user_profile, all_content_df, strategy, vote_count, excluded_content_ids, db
-    )
-
-    if not candidate_items or len(candidate_items) < 2:
-        # Fallback: If not enough candidates, try with a broader selection from DB
-        # CRITICAL: Must still apply exclusion filters even in fallback!
-        print(f"Warning: Not enough candidates from strategy '{strategy}'. Falling back to broader random selection with exclusions.")
-        
-        # Build fallback query with proper exclusions
-        fallback_filter = {"content_type": target_content_type}
-        
-        # Add exclusion filters - CRITICAL BUG FIX
-        if excluded_content_ids:
-            fallback_filter["$and"] = [
-                {"id": {"$nin": list(excluded_content_ids)}},
-                {"imdb_id": {"$nin": list(excluded_content_ids)}}
-            ]
-        
-        fallback_items_cursor = db.content.find(fallback_filter)
-        fallback_items_list = await fallback_items_cursor.to_list(length=200) # Get a decent sample
-        
-        if len(fallback_items_list) < 2:
-             # Try other content type if primary failed - but still with exclusions
-            target_content_type = "series" if target_content_type == "movie" else "movie"
-            fallback_filter = {"content_type": target_content_type}
-            
-            # Apply exclusions to secondary content type too
-            if excluded_content_ids:
-                fallback_filter["$and"] = [
-                    {"id": {"$nin": list(excluded_content_ids)}},
-                    {"imdb_id": {"$nin": list(excluded_content_ids)}}
-                ]
-            
-            fallback_items_cursor = db.content.find(fallback_filter)
-            fallback_items_list = await fallback_items_cursor.to_list(length=200)
-            
-            if len(fallback_items_list) < 2:
-                 raise HTTPException(status_code=404, detail=f"Not enough content of type '{target_content_type}' for fallback after exclusions.")
-
-        # Convert to dicts if they are not already (they should be from DB)
-        candidate_items = [dict(item) for item in fallback_items_list]
-
-
-    pair_tuple = await _select_pair_from_candidates(
-        candidate_items, user_profile, strategy, voted_pairs, target_content_type
-    )
-
-    if not pair_tuple:
-        # Ultimate fallback: grab any two of the target_content_type not voted on, if possible
-        # This is a simplified version of the original get_voting_pair's fallback
-        print(f"Warning: Could not select a pair using advanced logic. Using simpler random fallback.")
-        items_of_type_dicts = [c for c in all_content_df.to_dict('records') if c['content_type'] == target_content_type]
-
-        if len(items_of_type_dicts) < 2:
-            # Try other content type if primary failed
-            target_content_type = "series" if target_content_type == "movie" else "movie"
-            items_of_type_dicts = [c for c in all_content_df.to_dict('records') if c['content_type'] == target_content_type]
-            if len(items_of_type_dicts) < 2:
-                 raise HTTPException(status_code=404, detail=f"Not enough content of type '{target_content_type}' for final fallback.")
-
-        for _ in range(50): # Max attempts for this simple fallback
-            item1_dict, item2_dict = random.sample(items_of_type_dicts, 2)
-            if frozenset([item1_dict["id"], item2_dict["id"]]) not in voted_pairs:
-                # Convert database format to ContentItem format
-                item1_content = _dataframe_row_to_content_item(item1_dict)
-                item2_content = _dataframe_row_to_content_item(item2_dict)
-                return VotePair(
-                    item1=ContentItem(**item1_content), 
-                    item2=ContentItem(**item2_content), 
-                    content_type=target_content_type
-                )
-
-        # If still no pair, raise (very unlikely if content exists)
-        raise HTTPException(status_code=404, detail="Could not form a voting pair after all fallbacks.")
-
-    item1_dict, item2_dict = pair_tuple
     
-    # Convert DataFrame format back to ContentItem format
-    item1_content = _dataframe_row_to_content_item(item1_dict)
-    item2_content = _dataframe_row_to_content_item(item2_dict)
+    # Get content directly from database (preserves all fields including poster)
+    exclusion_filter = {"content_type": target_content_type}
     
+    # Add exclusion filters for user preferences
+    if excluded_content_ids:
+        exclusion_filter["$and"] = [
+            {"id": {"$nin": list(excluded_content_ids)}},
+            {"imdb_id": {"$nin": list(excluded_content_ids)}}
+        ]
+    
+    # Get available content
+    available_content = await db.content.find(exclusion_filter).to_list(length=None)
+    
+    if len(available_content) < 2:
+        # Try other content type
+        target_content_type = "series" if target_content_type == "movie" else "movie"
+        exclusion_filter["content_type"] = target_content_type
+        available_content = await db.content.find(exclusion_filter).to_list(length=None)
+        
+        if len(available_content) < 2:
+            raise HTTPException(status_code=404, detail=f"Not enough content available after exclusions")
+    
+    # Find unvoted pair
+    max_attempts = 50
+    for _ in range(max_attempts):
+        item1, item2 = random.sample(available_content, 2)
+        pair_ids = frozenset([item1["id"], item2["id"]])
+        
+        if pair_ids not in voted_pairs:
+            # Create ContentItems directly from database documents (preserves poster URLs)
+            return VotePair(
+                item1=ContentItem(
+                    id=item1["id"],
+                    imdb_id=item1.get("imdb_id", ""),
+                    title=item1["title"],
+                    year=str(item1["year"]),
+                    content_type=item1["content_type"],
+                    genre=item1.get("genre", ""),
+                    rating=item1.get("rating"),
+                    poster=item1.get("poster"),  # This should preserve the poster URL!
+                    plot=item1.get("plot"),
+                    director=item1.get("director"),
+                    actors=item1.get("actors")
+                ),
+                item2=ContentItem(
+                    id=item2["id"],
+                    imdb_id=item2.get("imdb_id", ""),
+                    title=item2["title"],
+                    year=str(item2["year"]),
+                    content_type=item2["content_type"],
+                    genre=item2.get("genre", ""),
+                    rating=item2.get("rating"),
+                    poster=item2.get("poster"),  # This should preserve the poster URL!
+                    plot=item2.get("plot"),
+                    director=item2.get("director"),
+                    actors=item2.get("actors")
+                ),
+                content_type=target_content_type
+            )
+    
+    # If all pairs voted, return random pair anyway
+    item1, item2 = random.sample(available_content, 2)
     return VotePair(
-        item1=ContentItem(**item1_content),
-        item2=ContentItem(**item2_content),
-        content_type=item1_content.get('content_type') # Should be same for both
+        item1=ContentItem(
+            id=item1["id"],
+            imdb_id=item1.get("imdb_id", ""),
+            title=item1["title"],
+            year=str(item1["year"]),
+            content_type=item1["content_type"],
+            genre=item1.get("genre", ""),
+            rating=item1.get("rating"),
+            poster=item1.get("poster"),
+            plot=item1.get("plot"),
+            director=item1.get("director"),
+            actors=item1.get("actors")
+        ),
+        item2=ContentItem(
+            id=item2["id"],
+            imdb_id=item2.get("imdb_id", ""),
+            title=item2["title"],
+            year=str(item2["year"]),
+            content_type=item2["content_type"],
+            genre=item2.get("genre", ""),
+            rating=item2.get("rating"),
+            poster=item2.get("poster"),
+            plot=item2.get("plot"),
+            director=item2.get("director"),
+            actors=item2.get("actors")
+        ),
+        content_type=target_content_type
     )
 
 @api_router.post("/vote")
