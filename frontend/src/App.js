@@ -57,29 +57,25 @@ function App() {
     avatar_url: ''
   });
 
-  // Image loading error handler with debugging
+  // Simplified image loading handlers
   const handleImageError = (e) => {
     console.log('Image failed to load:', e.target.src);
-    console.log('Error event:', e);
+    // Simple approach: just hide the image and show fallback
     e.target.style.display = 'none';
-    // Find the parent container and show fallback
-    const parent = e.target.closest('.relative, .poster-container');
-    if (parent) {
-      const fallback = parent.querySelector('.image-fallback');
-      if (fallback) {
-        console.log('Showing fallback for:', e.target.src);
-        fallback.style.display = 'flex';
-      } else {
-        console.log('No fallback element found');
-      }
-    } else {
-      console.log('No parent container found');
+    const fallbackDiv = e.target.nextElementSibling;
+    if (fallbackDiv && fallbackDiv.classList.contains('image-fallback')) {
+      fallbackDiv.style.display = 'flex';
     }
   };
 
-  // Image loading success handler for debugging
   const handleImageLoad = (e) => {
     console.log('Image loaded successfully:', e.target.src);
+    // Ensure the image is visible and fallback is hidden
+    e.target.style.display = 'block';
+    const fallbackDiv = e.target.nextElementSibling;
+    if (fallbackDiv && fallbackDiv.classList.contains('image-fallback')) {
+      fallbackDiv.style.display = 'none';
+    }
   };
 
   // Configure axios with auth token
