@@ -57,17 +57,29 @@ function App() {
     avatar_url: ''
   });
 
-  // Image loading error handler
+  // Image loading error handler with debugging
   const handleImageError = (e) => {
+    console.log('Image failed to load:', e.target.src);
+    console.log('Error event:', e);
     e.target.style.display = 'none';
     // Find the parent container and show fallback
     const parent = e.target.closest('.relative, .poster-container');
     if (parent) {
       const fallback = parent.querySelector('.image-fallback');
       if (fallback) {
+        console.log('Showing fallback for:', e.target.src);
         fallback.style.display = 'flex';
+      } else {
+        console.log('No fallback element found');
       }
+    } else {
+      console.log('No parent container found');
     }
+  };
+
+  // Image loading success handler for debugging
+  const handleImageLoad = (e) => {
+    console.log('Image loaded successfully:', e.target.src);
   };
 
   // Configure axios with auth token
