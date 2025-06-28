@@ -54,7 +54,7 @@ async def test_voting_pair_exclusion():
     
     # Test the content DataFrame generation
     print(f"\n🔍 Step 2: Testing _get_all_content_items_as_df function...")
-    all_content_df = await _get_all_content_items_as_df()
+    all_content_df = await _get_all_content_items_as_df(db)
     
     if all_content_df is None or all_content_df.empty:
         print("❌ PROBLEM: Content DataFrame is empty!")
