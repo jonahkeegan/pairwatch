@@ -1493,10 +1493,15 @@ async def get_voting_pair(
         raise HTTPException(status_code=404, detail="Could not form a voting pair after all fallbacks.")
 
     item1_dict, item2_dict = pair_tuple
+    
+    # Convert DataFrame format back to ContentItem format
+    item1_content = _dataframe_row_to_content_item(item1_dict)
+    item2_content = _dataframe_row_to_content_item(item2_dict)
+    
     return VotePair(
-        item1=ContentItem(**item1_dict),
-        item2=ContentItem(**item2_dict),
-        content_type=item1_dict.get('content_type') # Should be same for both
+        item1=ContentItem(**item1_content),
+        item2=ContentItem(**item2_content),
+        content_type=item1_content.get('content_type') # Should be same for both
     )
 
 @api_router.post("/vote")
