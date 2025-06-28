@@ -1636,7 +1636,12 @@ async def pass_content(
     return {
         "success": True, 
         "content_passed": True,
-        "message": "Content permanently excluded from future voting pairs"
+        "message": "Content permanently excluded from future voting pairs",
+        "cache_buster": {
+            "content_excluded": pass_data["content_id"],
+            "timestamp": datetime.utcnow().isoformat(),
+            "interaction_type": "passed"
+        }
     }
 
 @api_router.get("/recommendations")
