@@ -1402,13 +1402,29 @@ function App() {
                   }`}
                 >
                   <div className="relative">
-                    {item.content.poster && (
-                      <img 
-                        src={item.content.poster} 
-                        alt={item.content.title}
-                        className="w-full h-64 object-cover cursor-pointer"
-                        onClick={() => openPosterModal(item.content)}
-                      />
+                    {item.content.poster ? (
+                      <>
+                        <img 
+                          src={item.content.poster} 
+                          alt={item.content.title}
+                          className="w-full h-64 object-cover cursor-pointer"
+                          onClick={() => openPosterModal(item.content)}
+                          onError={handleImageError}
+                        />
+                        <div className="image-fallback w-full h-64 bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center cursor-pointer" style={{display: 'none'}} onClick={() => openPosterModal(item.content)}>
+                          <div className="text-center text-gray-300">
+                            <div className="text-4xl mb-2">🎬</div>
+                            <div className="text-sm">No Poster Available</div>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="w-full h-64 bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center cursor-pointer" onClick={() => openPosterModal(item.content)}>
+                        <div className="text-center text-gray-300">
+                          <div className="text-4xl mb-2">🎬</div>
+                          <div className="text-sm">No Poster Available</div>
+                        </div>
+                      </div>
                     )}
                     <div className="absolute top-2 right-2">
                       <button
