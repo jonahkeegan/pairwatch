@@ -2190,7 +2190,11 @@ async def content_interaction(
             import traceback
             traceback.print_exc()
     
-    return {"success": True, "interaction_recorded": True}
+    return {
+        "success": True, 
+        "interaction_recorded": True,
+        "cache_buster": cache_buster_info
+    }
 
 @api_router.get("/watchlist/{watchlist_type}")
 async def get_watchlist(
