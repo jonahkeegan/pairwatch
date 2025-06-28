@@ -1350,7 +1350,7 @@ def _dataframe_row_to_content_item(row_dict: Dict) -> Dict:
     content_item_dict['year'] = str(row_dict.get('year', ''))  # Ensure string
     content_item_dict['content_type'] = row_dict.get('content_type', '')
     content_item_dict['genre'] = row_dict.get('genre', '')
-    content_item_dict['rating'] = str(row_dict.get('rating', '')) if row_dict.get('rating') else None
+    content_item_dict['rating'] = row_dict.get('original_rating')  # Use original rating
     content_item_dict['poster'] = row_dict.get('poster')
     content_item_dict['plot'] = row_dict.get('plot')
     content_item_dict['director'] = row_dict.get('director')
