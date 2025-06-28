@@ -2148,6 +2148,13 @@ async def content_interaction(
     
     await db.user_interactions.insert_one(interaction.dict())
     
+    # Add explicit cache-busting for frontend to prevent stale voting pairs
+    cache_buster_info = {
+        "content_excluded": interaction_data["content_id"],
+        "timestamp": datetime.utcnow().isoformat(),
+        "interaction_type": interaction_data["interaction_type"]
+    }
+    
     # If "want_to_watch", also add to user watchlist
     if interaction_data["interaction_type"] == "want_to_watch" and current_user:
         # Check if already in watchlist
