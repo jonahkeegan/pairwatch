@@ -1185,12 +1185,28 @@ function App() {
             >
               ✕
             </button>
-            {selectedPoster.poster && (
-              <img 
-                src={selectedPoster.poster} 
-                alt={selectedPoster.title}
-                className="w-full max-h-screen object-contain"
-              />
+            {selectedPoster.poster ? (
+              <>
+                <img 
+                  src={selectedPoster.poster} 
+                  alt={selectedPoster.title}
+                  className="w-full max-h-screen object-contain"
+                  onError={handleImageError}
+                />
+                <div className="image-fallback w-full h-96 bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center" style={{display: 'none'}}>
+                  <div className="text-center text-gray-300">
+                    <div className="text-6xl mb-4">🎬</div>
+                    <div className="text-lg">No Poster Available</div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="w-full h-96 bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center">
+                <div className="text-center text-gray-300">
+                  <div className="text-6xl mb-4">🎬</div>
+                  <div className="text-lg">No Poster Available</div>
+                </div>
+              </div>
             )}
           </div>
           <div className="p-6 text-white">
