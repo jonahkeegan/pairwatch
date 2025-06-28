@@ -989,42 +989,63 @@ async def get_replacement_voting_pair(
     """Get a replacement item for voting pair (keeping one item, replacing the other)"""
     # Determine user identifier
     user_identifier = None
+    user_id_for_exclusion = None
+    session_id_for_exclusion = None
+    
     if current_user:
         user_identifier = ("user", current_user.id)
+        user_id_for_exclusion = current_user.id
     elif session_id:
         # Verify session exists
         session = await db.sessions.find_one({"session_id": session_id})
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
         user_identifier = ("session", session_id)
+        session_id_for_exclusion = session_id
     else:
         raise HTTPException(status_code=400, detail="Either login or provide session_id")
+    
+    # Get excluded content IDs (watched, not_interested, passed)
+    vote_count, voted_pairs, excluded_content_ids = await _get_user_vote_stats(user_id_for_exclusion, session_id_for_exclusion)
     
     # Get the content item that should remain
     remaining_content = await db.content.find_one({"id": content_id})
     if not remaining_content:
         raise HTTPException(status_code=404, detail="Content not found")
     
-    # Get items of the same type as the remaining content
+    # Get items of the same type as the remaining content, excluding passed/not_interested content
     content_type = remaining_content["content_type"]
-    items = await db.content.find({
+    
+    # Build exclusion filter
+    exclusion_filter = {
         "content_type": content_type,
         "id": {"$ne": content_id}  # Exclude the remaining content
-    }).to_list(length=None)
+    }
+    
+    # Add exclusion for passed/not_interested/watched content
+    if excluded_content_ids:
+        exclusion_filter["$and"] = [
+            {"id": {"$nin": list(excluded_content_ids)}},
+            {"imdb_id": {"$nin": list(excluded_content_ids)}}
+        ]
+    
+    items = await db.content.find(exclusion_filter).to_list(length=None)
     
     if len(items) < 1:
-        raise HTTPException(status_code=400, detail=f"Not enough {content_type} content available for replacement")
-    
-    # Get user's vote history to avoid showing same pairs
-    if user_identifier[0] == "user":
-        user_votes = await db.votes.find({"user_id": user_identifier[1]}).to_list(length=None)
-    else:
-        user_votes = await db.votes.find({"session_id": user_identifier[1]}).to_list(length=None)
-    
-    voted_pairs = set()
-    for vote in user_votes:
-        pair = frozenset([vote["winner_id"], vote["loser_id"]])
-        voted_pairs.add(pair)
+        print(f"No replacement items available after exclusions for content_id: {content_id}")
+        print(f"Excluded content count: {len(excluded_content_ids)}")
+        # Fallback: Get items excluding only the current content and direct user exclusions
+        fallback_filter = {
+            "content_type": content_type,
+            "id": {"$ne": content_id}
+        }
+        if excluded_content_ids:
+            fallback_filter["id"] = {"$nin": [content_id] + list(excluded_content_ids)}
+        
+        items = await db.content.find(fallback_filter).to_list(length=None)
+        
+        if len(items) < 1:
+            raise HTTPException(status_code=400, detail=f"Not enough {content_type} content available for replacement")
     
     # Find an unvoted pair with the remaining content
     max_attempts = 50
